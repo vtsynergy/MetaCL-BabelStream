@@ -6,7 +6,7 @@ permalink: /publications/
 
 Please use the top publication to cite BabelStream.
 
-* T. Deakin, J. Price, M. Martineau, and S. McIntosh-Smith. "Evaluating attainable memory bandwidth of parallel programming models via BabelStream," International Journal of Computational Science and Engineering (special issue), 2017. (to appear)
+* T. Deakin, J. Price, M. Martineau, and S. McIntosh-Smith. "Evaluating attainable memory bandwidth of parallel programming models via BabelStream," International Journal of Computational Science and Engineering (special issue), 2017. [DOI: 10.1504/IJCSE.2017.10011352](https://doi.org/10.1504/IJCSE.2017.10011352) (to appear)
 
 * T. Deakin, J. Price, S. McIntosh-Smith. "Portable methods for measuring cache hierarchy performance (poster)", in Supercomputing, 2017. [Available online](http://sc17.supercomputing.org/SC17%20Archive/tech_poster/tech_poster_pages/post155.html)
 
