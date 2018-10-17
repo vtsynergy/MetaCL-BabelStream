@@ -2,6 +2,8 @@
 layout: home 
 ---
 
+<img src="https://github.com/UoB-HPC/BabelStream/blob/gh-pages/img/BabelStreamlogo.png?raw=true" alt="logo" width="200"/>
+
 BabelStream is a benchmark used to measure the memory transfer rates to/from capacity memory.
 Unlike other memory bandwidth benchmarks this does *not* include any PCIe transfer time for attached devices.
 This benchmark is similar in spirit, and based on, the STREAM benchmark [1] for CPUs.
