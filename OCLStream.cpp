@@ -15,7 +15,7 @@ a_dim3 localwg = { 0,0,0};
 
 // Cache list of devices
 bool cached = false;
-std::vector<cl::Device> devices;
+//std::vector<cl::Device> devices;
 void getDeviceList(void);
 
 
@@ -44,7 +44,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
 
   // Determine sensible dot kernel NDRange configuration
-  cl::Device device(&device1,true);
+  cl::Device device(device1,true);
   if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_CPU)
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
@@ -143,7 +143,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-  devices.clear();
+  //devices.clear();
   meta_deregister_module(&meta_gen_opencl_metacl_module_registry);
 }
 
@@ -220,7 +220,7 @@ void OCLStream<T>::read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector
   cl::copy(queue, d_b, b.begin(), b.end());
   cl::copy(queue, d_c, c.begin(), c.end());
 }
-
+/*
 void getDeviceList(void)
 {
   // Get list of platforms
@@ -299,7 +299,7 @@ std::string getDeviceDriver(const int device)
 
   return driver;
 }
-
+*/
 
 template class OCLStream<float>;
 template class OCLStream<double>;
