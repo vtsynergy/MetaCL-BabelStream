@@ -1,12 +1,9 @@
-OpenCL kernel enqueue error (host wrapper: "meta_gen_opencl_babelstream_stream_dot") -5 at metacl_module.c:440
 terminate called after throwing an instance of 'cl::Error'
   what():  clEnqueueMapBuffer
 
 Program received signal SIGABRT, Aborted.
 0x00007ffff6c31067 in __GI_raise (sig=sig@entry=6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:56
 56      ../nptl/sysdeps/unix/sysv/linux/raise.c: No such file or directory.
-(gdb)  clEnqueueMapBuffer
-Undefined command: "clEnqueueMapBuffer".  Try "help".
 (gdb) bt
 #0  0x00007ffff6c31067 in __GI_raise (sig=sig@entry=6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:56
 #1  0x00007ffff6c32448 in __GI_abort () at abort.c:89
@@ -21,5 +18,6 @@ Undefined command: "clEnqueueMapBuffer".  Try "help".
 #9  copy<__gnu_cxx::__normal_iterator<double*, std::vector<double, std::allocator<double> > > > (endIterator=..., startIterator=...,
     buffer=..., queue=...) at CL/cl2.hpp:8836
 #10 OCLStream<double>::dot (this=0x613040) at OCLStream.cpp:277
-#11 0x000000000040b8a0 in run<double> () at main.cpp:218
+#11 0x000000000040b880 in run<double> () at main.cpp:218
 #12 0x0000000000402b79 in main (argc=<optimized out>, argv=<optimized out>) at main.cpp:89
+(gdb)
