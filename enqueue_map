@@ -1,0 +1,25 @@
+OpenCL kernel enqueue error (host wrapper: "meta_gen_opencl_babelstream_stream_dot") -5 at metacl_module.c:440
+terminate called after throwing an instance of 'cl::Error'
+  what():  clEnqueueMapBuffer
+
+Program received signal SIGABRT, Aborted.
+0x00007ffff6c31067 in __GI_raise (sig=sig@entry=6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:56
+56      ../nptl/sysdeps/unix/sysv/linux/raise.c: No such file or directory.
+(gdb)  clEnqueueMapBuffer
+Undefined command: "clEnqueueMapBuffer".  Try "help".
+(gdb) bt
+#0  0x00007ffff6c31067 in __GI_raise (sig=sig@entry=6) at ../nptl/sysdeps/unix/sysv/linux/raise.c:56
+#1  0x00007ffff6c32448 in __GI_abort () at abort.c:89
+#2  0x00007ffff751eb3d in __gnu_cxx::__verbose_terminate_handler() () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#3  0x00007ffff751cbb6 in ?? () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#4  0x00007ffff751cc01 in std::terminate() () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#5  0x00007ffff751ce19 in __cxa_throw () from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#6  0x00000000004029d9 in cl::detail::errHandler (err=-36, errStr=errStr@entry=0x40ec8a "clEnqueueMapBuffer") at CL/cl2.hpp:762
+#7  0x0000000000403b9c in errHandler (errStr=0x40ec8a "clEnqueueMapBuffer", err=<optimized out>) at CL/cl2.hpp:1579
+#8  enqueueMapBuffer (blocking=1, flags=1, offset=0, events=0x0, event=0x0, err=<synthetic pointer>, size=448, buffer=...,
+    this=0x6130a0) at CL/cl2.hpp:7539
+#9  copy<__gnu_cxx::__normal_iterator<double*, std::vector<double, std::allocator<double> > > > (endIterator=..., startIterator=...,
+    buffer=..., queue=...) at CL/cl2.hpp:8836
+#10 OCLStream<double>::dot (this=0x613040) at OCLStream.cpp:277
+#11 0x000000000040b8a0 in run<double> () at main.cpp:218
+#12 0x0000000000402b79 in main (argc=<optimized out>, argv=<optimized out>) at main.cpp:89
