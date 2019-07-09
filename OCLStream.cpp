@@ -27,10 +27,10 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   
   cl::Platform platformlist; 
   cl_int errNum;
-  cl_device_id device1;
+  //cl_device_id device1;
 
   meta_set_acc(-1, metaModePreferOpenCL); //Must be set to OpenCL, don't need a device since we will override
-  meta_get_state_OpenCL(&platformlist(), &device1, &context(), &queue());
+  meta_get_state_OpenCL(&platformlist(), &device(), &context(), &queue());
   
   /*
   if (!cached)
@@ -41,10 +41,13 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     throw std::runtime_error("Invalid device index");
   device = devices[device_index];
   */
-
+  errNum=clRetainCommandQueue(queue());
+  errNum=clRetainContext(context());
+  errNum=clRetainDevice(device());
 
   // Determine sensible dot kernel NDRange configuration
-  cl::Device device(device1,true);
+  //cl::Device device(device1,true);
+  
   if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_CPU)
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
