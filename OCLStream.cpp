@@ -196,7 +196,7 @@ T OCLStream<T>::dot()
   a_dim3 global = {dot_num_groups,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
 
-  cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), sizeof(T) * dot_wgsize, array_size,0, NULL );
+  cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size,0, NULL );
   
   cl::copy(queue, d_sum, sums.begin(), sums.end());
   
