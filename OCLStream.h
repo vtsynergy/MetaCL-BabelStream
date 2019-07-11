@@ -38,7 +38,7 @@ class OCLStream : public Stream<T>
     cl::Buffer d_sum;
 
     // OpenCL objects
-    //cl::Device device;
+    cl::Device device;
     cl::Context context;
     cl::CommandQueue queue;
 
