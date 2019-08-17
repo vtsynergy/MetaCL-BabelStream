@@ -62,7 +62,11 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
-
+  if(argc>1){
+  char *c =argv[1];
+  deviceIndex= atoi(c);
+  printf("device number entered is %d\n", deviceIndex);
+        }
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -185,11 +189,9 @@ void run()
   std::chrono::high_resolution_clock::time_point t1, t2;
 
   // Main loop
-  printf("\n");
   for (unsigned int k = 0; k < num_times; k++)
   {
     // Execute Copy
-    //printf("iteration %d done\n",k);
     t1 = std::chrono::high_resolution_clock::now();
     stream->copy();
     t2 = std::chrono::high_resolution_clock::now();
@@ -501,11 +503,11 @@ int parseUInt(const char *str, unsigned int *output)
 
 void parseArguments(int argc, char *argv[])
 {
-  for (int i = 1; i < argc; i++)
+  for (int i = 2; i < argc; i++)
   {
     if (!std::string("--list").compare(argv[i]))
     {
-      //listDevices();
+      listDevices();
       exit(EXIT_SUCCESS);
     }
     else if (!std::string("--device").compare(argv[i]))

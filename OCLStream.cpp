@@ -6,48 +6,113 @@
 // source code
 
 #include "OCLStream.h"
-#include "metamorph.h"
-#include "metacl_module.h"
-
-a_dim3 globalWorkSize = {33554432,1,1};
-a_dim3 localwg = { 0,0,0};
-
-
+#include <time.h>
+#define BILLION 1E9
 // Cache list of devices
 bool cached = false;
-//std::vector<cl::Device> devices;
+std::vector<cl::Device> devices;
 void getDeviceList(void);
+cl::Event exec_event;
+std::vector<cl::Event> events;
+cl_ulong start_time,end_time;size_t return_bytes;
+struct timespec start, end;
 
+std::string kernels{R"CLC(
+
+  constant TYPE scalar = startScalar;
+
+  kernel void init(
+    global TYPE * restrict a,
+    global TYPE * restrict b,
+    global TYPE * restrict c,
+    TYPE initA, TYPE initB, TYPE initC)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = initA;
+    b[i] = initB;
+    c[i] = initC;
+  }
+
+  kernel void copy(
+    global const TYPE * restrict a,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i];
+  }
+
+  kernel void mul(
+    global TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    b[i] = scalar * c[i];
+  }
+
+  kernel void add(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i] + b[i];
+  }
+
+  kernel void triad(
+    global TYPE * restrict a,
+    global const TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = b[i] + scalar * c[i];
+  }
+
+  kernel void stream_dot(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict sum,
+    local TYPE * restrict wg_sum,
+    int array_size)
+  {
+    size_t i = get_global_id(0);
+    const size_t local_i = get_local_id(0);
+    wg_sum[local_i] = 0.0;
+    for (; i < array_size; i += get_global_size(0))
+      wg_sum[local_i] += a[i] * b[i];
+
+    for (int offset = get_local_size(0) / 2; offset > 0; offset /= 2)
+    {
+      barrier(CLK_LOCAL_MEM_FENCE);
+      if (local_i < offset)
+      {
+        wg_sum[local_i] += wg_sum[local_i+offset];
+      }
+    }
+
+    if (local_i == 0)
+      sum[get_group_id(0)] = wg_sum[local_i];
+  }
+
+)CLC"};
 
 
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 {
   
-  
-  cl::Platform platformlist; 
-  cl_int errNum;
-  //cl_device_id device1;
-
-  meta_set_acc(-1, metaModePreferOpenCL); //Must be set to OpenCL, don't need a device since we will override
-  meta_get_state_OpenCL(&platformlist(), &device(), &context(), &queue());
-  
-  /*
-  if (!cached)
+ events.push_back(exec_event);
+ if (!cached)
     getDeviceList();
-  
+ for (int i=0;i<6;i++){
+	ker_launch_over.push_back(0);
+	ker_exec_time.push_back(0);
+  }
   // Setup default OpenCL GPU
   if (device_index >= devices.size())
     throw std::runtime_error("Invalid device index");
   device = devices[device_index];
-  */
-  errNum=clRetainCommandQueue(queue());
-  errNum=clRetainContext(context());
-  errNum=clRetainDevice(device());
 
   // Determine sensible dot kernel NDRange configuration
-  //cl::Device device(device1,true);
-  
   if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_CPU)
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
@@ -58,36 +123,25 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
     dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
   }
-  
-  std::string driver;
-  device.getInfo(CL_DRIVER_VERSION, &driver);
-  
+
   // Print out device information
-  //std::cout << "Using OpenCL device " << getDeviceName(device_index) << std::endl;
-  
-  std::cout << "Driver: " << driver << std::endl;
+  std::cout << "Using OpenCL device " << getDeviceName(device_index) << std::endl;
+  std::cout << "Driver: " << getDeviceDriver(device_index) << std::endl;
   std::cout << "Reduction kernel config: " << dot_num_groups << " groups of size " << dot_wgsize << std::endl;
-  
 
-  
-  //context = cl::Context(device);
-  //queue = cl::CommandQueue(context);
-  
+  context = cl::Context(device);
+  queue = cl::CommandQueue(context,CL_QUEUE_PROFILING_ENABLE);
+ //queue=cl::CommandQueue(context, device,CL_QUEUE_PROFILING_ENABLE, NULL);
   // Create program
-  //cl::Program program(context, kernels);
-  
-  
+  cl::Program program(context, kernels);
   std::ostringstream args;
-
   args << "-DstartScalar=" << startScalar << " ";
   if (sizeof(T) == sizeof(double))
   {
     args << "-DTYPE=double";
     // Check device can do double
-    
     if (!device.getInfo<CL_DEVICE_DOUBLE_FP_CONFIG>())
-      printf("Device does not support double precision, please use --float");
-   /*
+      throw std::runtime_error("Device does not support double precision, please use --float");
     try
     {
       program.build(args.str().c_str());
@@ -100,30 +154,24 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
         throw err;
       }
     }
-   */
   }
   else if (sizeof(T) == sizeof(float))
   {
-    args << "-DTYPE=float"; 
-    //program.build(args.str().c_str());
+    args << "-DTYPE=float";
+    program.build(args.str().c_str());
   }
 
-
-   std::string c_args = args.str();
-   __meta_gen_opencl_babelstream_custom_args= c_args.c_str();
-   meta_register_module(&meta_gen_opencl_metacl_module_registry);
   // Create kernels
   
-  
-  //init_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T>(program, "init");
-  //copy_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "copy");
-  //mul_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "mul");
-  //add_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "add");
-  //triad_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "triad");
-  //dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
+  init_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T>(program, "init");
+  copy_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "copy");
+  mul_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "mul");
+  add_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "add");
+  triad_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "triad");
+  dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
   
   array_size = ARRAY_SIZE;
-  //dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
+
   // Check buffers fit on the device
   cl_ulong totalmem = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
   cl_ulong maxbuffer = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
@@ -139,81 +187,141 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   d_sum = cl::Buffer(context, CL_MEM_WRITE_ONLY, sizeof(T) * dot_num_groups);
 
   sums = std::vector<T>(dot_num_groups);
-
-
 }
 
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-  //devices.clear();
-  meta_deregister_module(&meta_gen_opencl_metacl_module_registry);
+  
+    printf("Kernel: Copy, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
+     printf("Kernel: Mul, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
+     printf("Kernel: Add, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
+     printf("Kernel: Triad, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
+     printf("Kernel: Dot, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
+     printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
+
+
+  delete init_kernel;
+  delete copy_kernel;
+  delete mul_kernel;
+  delete add_kernel;
+  delete triad_kernel;
+  devices.clear();
 }
 
 template <class T>
 void OCLStream<T>::copy()
 {
-    
-  //(*copy_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_c);
-  cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, NULL );
+clock_gettime(CLOCK_REALTIME, &start);  
+exec_event=(*copy_kernel)(
+    cl::EnqueueArgs(queue,cl::NDRange(array_size)),
+    d_a, d_c
+  );
+  exec_event.wait();
   //queue.finish();
-  
+ clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[0]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[0]+=static_cast<double>(end_time-start_time)/BILLION;
+ exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::mul()
 {
-  
-  //(*mul_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_mul(queue(), &globalWorkSize , &localwg, &d_b(), &d_c(), 0, NULL );
-
- //queue.finish();
+  clock_gettime(CLOCK_REALTIME, &start);  
+   exec_event=(*mul_kernel)(
+    cl::EnqueueArgs(queue,  cl::NDRange(array_size)),
+    d_b, d_c
+  );
+  exec_event.wait();
+  //queue.finish();
+   clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[1]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[1]+=static_cast<double>(end_time-start_time)/BILLION;
+ exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::add()
-{
-  //(*add_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_add(queue(), &globalWorkSize , &localwg, &d_a(),&d_b(), &d_c(), 0, NULL );
-
+{ 
+  clock_gettime(CLOCK_REALTIME, &start);  
+  exec_event=(*add_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_b, d_c
+  );
+  exec_event.wait();
   //queue.finish();
+   clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[2]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[2]+=static_cast<double>(end_time-start_time)/BILLION;
+ exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::triad()
 {
-  //(*triad_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_triad(queue(), &globalWorkSize , &localwg, &d_a(), &d_b(), &d_c(), 0, NULL );
-
+  clock_gettime(CLOCK_REALTIME, &start);  
+  exec_event=(*triad_kernel)(
+    cl::EnqueueArgs(queue,cl::NDRange(array_size)),
+    d_a, d_b, d_c
+  );
+  exec_event.wait();
   //queue.finish();
+   clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[3]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[3]+=static_cast<double>(end_time-start_time)/BILLION;
+ exec_event=NULL;
 }
 
 template <class T>
 T OCLStream<T>::dot()
 {
-  //(*dot_kernel)(cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size);
-  
-  a_dim3 global = {dot_num_groups,1,1};
-  a_dim3 local  = {dot_wgsize,1,1};
-
-  cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size,0, NULL );
-  
+  clock_gettime(CLOCK_REALTIME, &start);  
+  exec_event=(*dot_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),
+    d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size
+  );
+  exec_event.wait();
+  //queue.finish();
+   clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[4]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[4]+=static_cast<double>(end_time-start_time)/BILLION;
+ exec_event=NULL;
   cl::copy(queue, d_sum, sums.begin(), sums.end());
-  
+
   T sum = 0.0;
   for (T val : sums)
     sum += val;
- return sum;
 
+  return sum;
 }
 
 template <class T>
 void OCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
-  //(*init_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c, initA, initB, initC );
-  //a_dim3 global = { array_size,1,1};
-  cl_int err= meta_gen_opencl_babelstream_init(queue(), &globalWorkSize , &localwg, &d_a(), &d_b(), &d_c(), initA,  initB,  initC, 0, NULL );
-  //queue.finish();
+clock_gettime(CLOCK_REALTIME, &start);  
+  exec_event=(*init_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_b, d_c, initA, initB, initC
+  );
+ exec_event.wait();
+ //queue.finish();
+ clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[5]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+ exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+ ker_exec_time[5]+=static_cast<double>(end_time-start_time)/BILLION;;
+ exec_event=NULL;
 }
 
 template <class T>
@@ -223,7 +331,7 @@ void OCLStream<T>::read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector
   cl::copy(queue, d_b, b.begin(), b.end());
   cl::copy(queue, d_c, c.begin(), c.end());
 }
-/*
+
 void getDeviceList(void)
 {
   // Get list of platforms
@@ -302,7 +410,7 @@ std::string getDeviceDriver(const int device)
 
   return driver;
 }
-*/
+
 
 template class OCLStream<float>;
 template class OCLStream<double>;

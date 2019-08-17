@@ -15,7 +15,7 @@
 #define CL_HPP_TARGET_OPENCL_VERSION 120
 #define CL_HPP_MINIMUM_OPENCL_VERSION 120
 
-#include "CL/cl2.hpp"
+#include <CL/cl2.hpp>
 
 #include "Stream.h"
 
@@ -30,7 +30,8 @@ class OCLStream : public Stream<T>
 
     // Host array for partial sums for dot kernel
     std::vector<T> sums;
-
+    std::vector<double> ker_launch_over;
+    std::vector<double> ker_exec_time;
     // Device side pointers to arrays
     cl::Buffer d_a;
     cl::Buffer d_b;
@@ -42,14 +43,13 @@ class OCLStream : public Stream<T>
     cl::Context context;
     cl::CommandQueue queue;
 
-    /*
     cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T> *init_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer> *copy_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer> * mul_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *add_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *triad_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> *dot_kernel;
-     */
+
     // NDRange configuration for the dot kernel
     size_t dot_num_groups;
     size_t dot_wgsize;
