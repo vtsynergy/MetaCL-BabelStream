@@ -173,7 +173,7 @@ void OCLStream<T>::copy()
   cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[0]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[0]+=(double)(end_time-start_time)/BILLION;
@@ -190,7 +190,7 @@ void OCLStream<T>::mul()
   cl_int err =meta_gen_opencl_babelstream_mul(queue(), &globalWorkSize , &localwg, &d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[1]+= ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[1]+=(double)(end_time-start_time)/BILLION;
@@ -206,7 +206,7 @@ void OCLStream<T>::add()
   cl_int err =meta_gen_opencl_babelstream_add(queue(), &globalWorkSize , &localwg, &d_a(),&d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[2]+=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[2]+=(double)(end_time-start_time)/BILLION;
@@ -222,7 +222,7 @@ void OCLStream<T>::triad()
   cl_int err =meta_gen_opencl_babelstream_triad(queue(), &globalWorkSize,&localwg, &d_a(), &d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[3]+=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[3]+=(double)(end_time-start_time)/BILLION;
@@ -242,7 +242,7 @@ T OCLStream<T>::dot()
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[4]+=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec)/ BILLION;
 //printf( "%lf\n", accum );
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[4]+=(double)(end_time-start_time)/BILLION;
@@ -265,7 +265,7 @@ void OCLStream<T>::init_arrays(T initA, T initB, T initC)
   cl_int err= meta_gen_opencl_babelstream_init(queue(), &globalWorkSize, &localwg, &d_a(), &d_b(), &d_c(), initA,  initB,  initC, 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[5]+=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
-  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_QUEUED,sizeof(cl_ulong),  &start_time,&return_bytes);
+  err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
   ker_exec_time[5]+=(double)(end_time-start_time)/BILLION;
