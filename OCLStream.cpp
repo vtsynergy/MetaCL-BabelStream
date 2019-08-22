@@ -314,8 +314,8 @@ clock_gettime(CLOCK_REALTIME, &start);
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c, initA, initB, initC
   );
- exec_event.wait();
- //queue.finish();
+// exec_event.wait();
+ queue.finish();
  clock_gettime(CLOCK_REALTIME, &end);
  ker_launch_over[5]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
