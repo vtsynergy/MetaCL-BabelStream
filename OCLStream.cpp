@@ -146,13 +146,25 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
 
 }
-
+template <class T>
+void OCLStream<T>::print_res()
+{
+it_monitor++;
+printf("****iteration %d *******\n",it_monitor);
+printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
+printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
+printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
+printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
+printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
+     
+printf("************************\n\n");
+}
 template <class T>
 OCLStream<T>::~OCLStream()
 {
   //devices.clear();
      meta_deregister_module(&meta_gen_opencl_metacl_module_registry);
-
+/*
      printf("Kernel: Copy, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
      printf("Kernel: Mul, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
      printf("Kernel: Add, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
@@ -161,7 +173,7 @@ OCLStream<T>::~OCLStream()
      printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
      //printf("execution time for kernel %d is %lf seconds \n", i, ker_exec_time[i]);
 
-  
+  */
 }
 
 template <class T>
@@ -172,11 +184,11 @@ void OCLStream<T>::copy()
   clock_gettime(CLOCK_REALTIME, &start);	
   cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[0]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over[0]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[0]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[0]=(double)(end_time-start_time)/BILLION;
   //queue.finish();
   
 }
@@ -189,11 +201,11 @@ void OCLStream<T>::mul()
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err =meta_gen_opencl_babelstream_mul(queue(), &globalWorkSize , &localwg, &d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[1]+= ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over[1]= ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[1]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[1]=(double)(end_time-start_time)/BILLION;
 //printf( "%lf\n", accum );
  //queue.finish();
 }
@@ -205,11 +217,11 @@ void OCLStream<T>::add()
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err =meta_gen_opencl_babelstream_add(queue(), &globalWorkSize , &localwg, &d_a(),&d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[2]+=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over[2]=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[2]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[2]=(double)(end_time-start_time)/BILLION;
 //printf( "%lf\n", accum );
   //queue.finish();
 }
@@ -221,11 +233,11 @@ void OCLStream<T>::triad()
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err =meta_gen_opencl_babelstream_triad(queue(), &globalWorkSize,&localwg, &d_a(), &d_b(), &d_c(), 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[3]+=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over[3]=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[3]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[3]=(double)(end_time-start_time)/BILLION;
 //printf( "%lf\n", accum );
   //queue.finish();
 }
@@ -240,12 +252,12 @@ T OCLStream<T>::dot()
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size,0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[4]+=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec)/ BILLION;
+  ker_launch_over[4]=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec)/ BILLION;
 //printf( "%lf\n", accum );
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[4]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[4]=(double)(end_time-start_time)/BILLION;
   cl::copy(queue, d_sum, sums.begin(), sums.end());
   
  
@@ -264,11 +276,11 @@ void OCLStream<T>::init_arrays(T initA, T initB, T initC)
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err= meta_gen_opencl_babelstream_init(queue(), &globalWorkSize, &localwg, &d_a(), &d_b(), &d_c(), initA,  initB,  initC, 0, &exec_event);
   clock_gettime(CLOCK_REALTIME, &end);
-  ker_launch_over[5]+=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over[5]=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_END,sizeof(cl_ulong), &end_time,&return_bytes);
   exec_event=NULL;
-  ker_exec_time[5]+=(double)(end_time-start_time)/BILLION;
+  ker_exec_time[5]=(double)(end_time-start_time)/BILLION;
 //printf( "%lf\n", accum );
   //queue.finish();
 }

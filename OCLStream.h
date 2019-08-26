@@ -42,7 +42,7 @@ class OCLStream : public Stream<T>
     cl::Device device;
     cl::Context context;
     cl::CommandQueue queue;
-
+    int it_monitor=0;
     /*
     cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T> *init_kernel;
     cl::KernelFunctor<cl::Buffer, cl::Buffer> *copy_kernel;
@@ -65,7 +65,7 @@ class OCLStream : public Stream<T>
     virtual void mul() override;
     virtual void triad() override;
     virtual T dot() override;
-
+    virtual void print_res() override;
     virtual void init_arrays(T initA, T initB, T initC) override;
     virtual void read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c) override;
 
