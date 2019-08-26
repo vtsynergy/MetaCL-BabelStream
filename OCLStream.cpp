@@ -106,6 +106,9 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
  for (int i=0;i<6;i++){
 	ker_launch_over.push_back(0);
 	ker_exec_time.push_back(0);
+	ker_launch_over_rec.push_back(0);
+	ker_exec_time_rec.push_back(0);
+	
   }
   // Setup default OpenCL GPU
   if (device_index >= devices.size())
@@ -192,14 +195,14 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-  
+  /*
     printf("Kernel: Copy, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
      printf("Kernel: Mul, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
      printf("Kernel: Add, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
      printf("Kernel: Triad, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
      printf("Kernel: Dot, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
      printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
-
+ */
 
   delete init_kernel;
   delete copy_kernel;
@@ -220,13 +223,25 @@ exec_event=(*copy_kernel)(
   exec_event.wait();
   //queue.finish();
  clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[0]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[0]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[0]+=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time[0]=static_cast<double>(end_time-start_time)/BILLION;
  exec_event=NULL;
 }
-
+template <class T>
+void OCLStream<T>::print_res()
+{
+it_monitor++;
+printf("****iteration %d *******\n",it_monitor);
+printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
+printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
+printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
+printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
+printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
+     
+printf("************************\n\n");
+}
 template <class T>
 void OCLStream<T>::mul()
 {
@@ -238,10 +253,10 @@ void OCLStream<T>::mul()
   exec_event.wait();
   //queue.finish();
    clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[1]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[1]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[1]+=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time[1]=static_cast<double>(end_time-start_time)/BILLION;
  exec_event=NULL;
 }
 
@@ -256,10 +271,10 @@ void OCLStream<T>::add()
   exec_event.wait();
   //queue.finish();
    clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[2]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[2]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[2]+=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time[2]=static_cast<double>(end_time-start_time)/BILLION;
  exec_event=NULL;
 }
 
@@ -274,10 +289,10 @@ void OCLStream<T>::triad()
   exec_event.wait();
   //queue.finish();
    clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[3]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[3]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[3]+=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time[3]=static_cast<double>(end_time-start_time)/BILLION;
  exec_event=NULL;
 }
 
@@ -292,10 +307,10 @@ T OCLStream<T>::dot()
   exec_event.wait();
   //queue.finish();
    clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[4]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[4]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[4]+=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time[4]=static_cast<double>(end_time-start_time)/BILLION;
  exec_event=NULL;
   cl::copy(queue, d_sum, sums.begin(), sums.end());
 
@@ -317,11 +332,12 @@ clock_gettime(CLOCK_REALTIME, &start);
 // exec_event.wait();
  queue.finish();
  clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[5]+=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over[5]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[5]+=static_cast<double>(end_time-start_time)/BILLION;;
+ ker_exec_time[5]=static_cast<double>(end_time-start_time)/BILLION;;
  exec_event=NULL;
+ printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
 }
 
 template <class T>

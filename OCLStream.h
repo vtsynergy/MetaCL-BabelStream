@@ -32,12 +32,14 @@ class OCLStream : public Stream<T>
     std::vector<T> sums;
     std::vector<double> ker_launch_over;
     std::vector<double> ker_exec_time;
+    std::vector<double> ker_exec_time_rec;
+    std::vector<double> ker_launch_over_rec;
     // Device side pointers to arrays
     cl::Buffer d_a;
     cl::Buffer d_b;
     cl::Buffer d_c;
     cl::Buffer d_sum;
-
+    int it_monitor=0;
     // OpenCL objects
     cl::Device device;
     cl::Context context;
@@ -62,6 +64,7 @@ class OCLStream : public Stream<T>
     virtual void copy() override;
     virtual void add() override;
     virtual void mul() override;
+    virtual void print_res() override;
     virtual void triad() override;
     virtual T dot() override;
 
