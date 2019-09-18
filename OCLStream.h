@@ -38,6 +38,8 @@ class OCLStream : public Stream<T>
     cl::Buffer d_sum;
     std::vector<double> ker_launch_over;
     std::vector<double> ker_exec_time;
+std::vector<std::vector<double>> ker_exec_time_rec;
+    std::vector<std::vector<double>> ker_launch_over_rec;
     // OpenCL objects
     cl::Device device;
     cl::Context context;
