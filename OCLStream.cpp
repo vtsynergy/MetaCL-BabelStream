@@ -197,7 +197,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-   printf("Kernel_Init_array_NDRange : %lf, Kernel_Event_Based Time: %lf, Kernel_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
+  printf("Kernel_Init_array_NDRange : %lf\nKernel_Init_array_Event_Based Time: %lf\nKernel_Init_array_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
   for(int i=0; i<it_monitor;i++)
 {
   printf("****iteration %d *******\n",i+1);
