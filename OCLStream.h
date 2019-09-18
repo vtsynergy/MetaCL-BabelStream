@@ -32,8 +32,10 @@ class OCLStream : public Stream<T>
     std::vector<T> sums;
     std::vector<double> ker_launch_over;
     std::vector<double> ker_exec_time;
-    std::vector<double> ker_exec_time_rec;
-    std::vector<double> ker_launch_over_rec;
+    
+    std::vector<std::vector<double>> ker_exec_time_rec;
+    std::vector<std::vector<double>> ker_launch_over_rec;
+   
     // Device side pointers to arrays
     cl::Buffer d_a;
     cl::Buffer d_b;

@@ -106,10 +106,12 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
  for (int i=0;i<6;i++){
 	ker_launch_over.push_back(0);
 	ker_exec_time.push_back(0);
-	ker_launch_over_rec.push_back(0);
-	ker_exec_time_rec.push_back(0);
-	
+	//ker_launch_over_rec.push_back(0);
+	//ker_exec_time_rec.push_back(0);
   }
+  ker_launch_over_rec.resize(6);
+  ker_exec_time_rec.resize(6);
+  
   // Setup default OpenCL GPU
   if (device_index >= devices.size())
     throw std::runtime_error("Invalid device index");
@@ -195,15 +197,17 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-  /*
-    printf("Kernel: Copy, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
-     printf("Kernel: Mul, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
-     printf("Kernel: Add, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
-     printf("Kernel: Triad, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
-     printf("Kernel: Dot, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
-     printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
- */
-
+   printf("Kernel_Init_array_NDRange : %lf, Kernel_Event_Based Time: %lf, Kernel_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
+  for(int i=0; i<it_monitor;i++)
+{
+  printf("****iteration %d *******\n",i+1);
+  printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead:  %lf\n",ker_launch_over_rec[0][i],ker_exec_time_rec[0][i],ker_launch_over_rec[0][i] - ker_exec_time_rec[0][i]);
+  printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over_rec[1][i],ker_exec_time_rec[1][i],ker_launch_over_rec[1][i] - ker_exec_time_rec[1][i]);
+printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over_rec[2][i],ker_exec_time_rec[2][i],ker_launch_over_rec[2][i] - ker_exec_time_rec[2][i]);
+printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over_rec[3][i],ker_exec_time_rec[3][i],ker_launch_over_rec[3][i] - ker_exec_time_rec[3][i]);
+printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over_rec[4][i],ker_exec_time_rec[4][i],ker_launch_over_rec[4][i] - ker_exec_time_rec[4][i]);
+printf("************************\n\n");
+}
   delete init_kernel;
   delete copy_kernel;
   delete mul_kernel;
@@ -233,6 +237,13 @@ template <class T>
 void OCLStream<T>::print_res()
 {
 it_monitor++;
+
+for (int i=0;i<=4;i++)
+{
+ ker_launch_over_rec[i].push_back(ker_launch_over[i]);
+ ker_exec_time_rec[i].push_back(ker_exec_time[i]);
+}
+/*
 printf("****iteration %d *******\n",it_monitor);
 printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
 printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
@@ -241,6 +252,7 @@ printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad
 printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
      
 printf("************************\n\n");
+*/
 }
 template <class T>
 void OCLStream<T>::mul()
@@ -333,11 +345,13 @@ clock_gettime(CLOCK_REALTIME, &start);
  queue.finish();
  clock_gettime(CLOCK_REALTIME, &end);
  ker_launch_over[5]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+ ker_launch_over_rec[5].push_back(( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[5]=static_cast<double>(end_time-start_time)/BILLION;;
+ ker_exec_time[5]=static_cast<double>(end_time-start_time)/BILLION;
+ ker_exec_time_rec[5].push_back(ker_exec_time[5]);
  exec_event=NULL;
- printf("Kernel: Init_array, NDRange time: %lf, Event Based Time: %lf, Launch Overhead: %lf\n",ker_launch_over[5],ker_exec_time[5],ker_launch_over[5]-ker_exec_time[5]);
+ 
 }
 
 template <class T>
