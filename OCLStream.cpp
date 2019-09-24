@@ -29,7 +29,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   cl_int errNum;
   //cl_device_id device1;
 
-  meta_set_acc(-1, metaModePreferOpenCL); //Must be set to OpenCL, don't need a device since we will override
+  meta_set_acc(device_index, metaModePreferOpenCL); //Must be set to OpenCL, don't need a device since we will override
   meta_get_state_OpenCL(&platformlist(), &device(), &context(), &queue());
   
   /*
