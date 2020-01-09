@@ -1,3 +1,6 @@
+COMPILE using make -f OpenCL.make
+TO run native branches, use the command env LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/libstdc++.so:$LD_LIBRARY_PATH:~/metaCL_workspace/MetaMorph/lib ./metababel --device <device number>
+To run metace branches use the command env LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/7/libstdc++.so:$LD_LIBRARY_PATH:~/metaCL_workspace/MetaMorph/lib ./ocl-stream <device number>
 Android (outdated instructions)
 ------------------
 
