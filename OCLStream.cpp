@@ -11,7 +11,7 @@
 
 a_dim3 globalWorkSize = {33554432,1,1};
 a_dim3 localwg = { 0,0,0};
-
+int ii=0;
 
 // Cache list of devices
 bool cached = false;
@@ -56,8 +56,10 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   else
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
-    dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-  }
+   // dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    dot_wgsize     = 64;
+   //// dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2; 
+}
   
   std::string driver;
   device.getInfo(CL_DRIVER_VERSION, &driver);
@@ -153,8 +155,9 @@ OCLStream<T>::~OCLStream()
 template <class T>
 void OCLStream<T>::copy()
 {
-    
-  //(*copy_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_c);
+ // printf("iteration %d\n\n\n\n\n\n", ii);
+ // ii++;
+ //(*copy_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_c);
   cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, NULL );
   //queue.finish();
   

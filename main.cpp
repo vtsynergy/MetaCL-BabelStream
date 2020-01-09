@@ -189,7 +189,7 @@ void run()
   for (unsigned int k = 0; k < num_times; k++)
   {
     // Execute Copy
-    //printf("iteration %d done\n",k);
+   // printf("iteration %d done\n",k);
     t1 = std::chrono::high_resolution_clock::now();
     stream->copy();
     t2 = std::chrono::high_resolution_clock::now();
