@@ -126,7 +126,8 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   else
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
-    dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+   // dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+    dot_wgsize=64;
   }
 
   // Print out device information
@@ -138,7 +139,26 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   queue = cl::CommandQueue(context,CL_QUEUE_PROFILING_ENABLE);
  //queue=cl::CommandQueue(context, device,CL_QUEUE_PROFILING_ENABLE, NULL);
   // Create program
-  cl::Program program(context, kernels);
+ 
+  #define clBinaryProg(name) \
+cl_program name; { \
+       printf("Loading "#name".aocx\n"); \
+FILE * f = fopen(#name".aocx", "r"); \
+       fseek(f, 0, SEEK_END); \
+       size_t len = (size_t) ftell(f); \
+       const unsigned char * progSrc = (const unsigned char *) malloc(sizeof(char) * len); \
+       rewind(f); \
+       fread((void *) progSrc, len, 1, f); \
+       fclose(f); \
+       cl_int err2; \
+       name = clCreateProgramWithBinary(context(), 1, &device(), &len, &progSrc, NULL, &err2);}
+clBinaryProg(babelstream);
+// cl::Program program = cl::Program{context, devices, bin, &binary_status, &err};
+   cl::Program program(babelstream);
+ 
+
+
+  // cl::Program program(context, kernels);
   std::ostringstream args;
   args << "-DstartScalar=" << startScalar << " ";
   if (sizeof(T) == sizeof(double))
