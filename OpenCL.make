@@ -71,6 +71,5 @@ clean:
 
 
 run: 
-	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/metaCL_workspace/MetaMorph/lib ./metababel $(device)
-
+	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/metaCL_workspace/MetaMorph/lib  ./metababel --device=$(dev)
 
