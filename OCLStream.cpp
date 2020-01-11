@@ -64,7 +64,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
     //dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    dot_wgsize=4;
+    dot_wgsize=64;
   }
    
   std::string driver;
