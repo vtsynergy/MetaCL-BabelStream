@@ -116,8 +116,8 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
 
    std::string c_args = args.str();
-   __meta_gen_opencl_babelstream_custom_args= c_args.c_str();
-   meta_register_module(&meta_gen_opencl_metacl_module_registry);
+   __metacl_babelstream_custom_args= c_args.c_str();
+   meta_register_module(&metacl_metacl_module_registry);
   // Create kernels
   
   
@@ -176,7 +176,7 @@ printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launc
 printf("************************\n\n");
 }
 
-     meta_deregister_module(&meta_gen_opencl_metacl_module_registry);
+     meta_deregister_module(&metacl_metacl_module_registry);
 }
 
 template <class T>
@@ -185,7 +185,7 @@ void OCLStream<T>::copy()
     
   //(*copy_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_c);
   clock_gettime(CLOCK_REALTIME, &start);	
-  cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, &exec_event);
+  cl_int err =metacl_babelstream_copy(queue(), &globalWorkSize , &localwg, NULL, 0, &exec_event,&d_a(), &d_c());
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[0]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
@@ -202,7 +202,7 @@ void OCLStream<T>::mul()
   
   //(*mul_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_b, d_c);
   clock_gettime(CLOCK_REALTIME, &start);
-  cl_int err =meta_gen_opencl_babelstream_mul(queue(), &globalWorkSize , &localwg, &d_b(), &d_c(), 0, &exec_event);
+  cl_int err =metacl_babelstream_mul(queue(), &globalWorkSize , &localwg,NULL , 0, &exec_event,&d_b(), &d_c());
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[1]= ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
@@ -218,7 +218,7 @@ void OCLStream<T>::add()
 {
   //(*add_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
   clock_gettime(CLOCK_REALTIME, &start);
-  cl_int err =meta_gen_opencl_babelstream_add(queue(), &globalWorkSize , &localwg, &d_a(),&d_b(), &d_c(), 0, &exec_event);
+  cl_int err =metacl_babelstream_add(queue(), &globalWorkSize , &localwg,NULL, 0, &exec_event, &d_a(),&d_b(), &d_c());
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[2]=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
@@ -234,7 +234,7 @@ void OCLStream<T>::triad()
 {
   //(*triad_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
   clock_gettime(CLOCK_REALTIME, &start);
-  cl_int err =meta_gen_opencl_babelstream_triad(queue(), &globalWorkSize,&localwg, &d_a(), &d_b(), &d_c(), 0, &exec_event);
+  cl_int err =metacl_babelstream_triad(queue(), &globalWorkSize,&localwg, NULL, 0, &exec_event,&d_a(), &d_b(), &d_c());
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[3]=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   err = clGetEventProfilingInfo(exec_event,CL_PROFILING_COMMAND_START,sizeof(cl_ulong),  &start_time,&return_bytes);
@@ -253,7 +253,7 @@ T OCLStream<T>::dot()
   a_dim3 global = {dot_num_groups,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
   clock_gettime(CLOCK_REALTIME, &start);
-  cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size,0, &exec_event);
+  cl_int err =metacl_babelstream_stream_dot(queue(), &global, &local,NULL,0, &exec_event, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[4]=  ( end.tv_sec - start.tv_sec )+ ( end.tv_nsec - start.tv_nsec)/ BILLION;
 //printf( "%lf\n", accum );
@@ -277,7 +277,7 @@ void OCLStream<T>::init_arrays(T initA, T initB, T initC)
   //(*init_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c, initA, initB, initC );
   //a_dim3 global = { array_size,1,1};
   clock_gettime(CLOCK_REALTIME, &start);
-  cl_int err= meta_gen_opencl_babelstream_init(queue(), &globalWorkSize, &localwg, &d_a(), &d_b(), &d_c(), initA,  initB,  initC, 0, &exec_event);
+  cl_int err= metacl_babelstream_init(queue(), &globalWorkSize, &localwg,NULL, 0, &exec_event, &d_a(), &d_b(), &d_c(), initA,  initB,  initC);
   clock_gettime(CLOCK_REALTIME, &end);
   ker_launch_over[5]=  ( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
   ker_launch_over_rec[5].push_back( ker_launch_over[5]);
