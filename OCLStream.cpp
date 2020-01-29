@@ -112,8 +112,8 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
 
    std::string c_args = args.str();
-   __meta_gen_opencl_babelstream_custom_args= c_args.c_str();
-   meta_register_module(&meta_gen_opencl_metacl_module_registry);
+   __metacl_babelstream_custom_args= c_args.c_str();
+   meta_register_module(&metacl_metacl_module_registry);
   // Create kernels
   
   
@@ -149,7 +149,7 @@ template <class T>
 OCLStream<T>::~OCLStream()
 {
   //devices.clear();
-  meta_deregister_module(&meta_gen_opencl_metacl_module_registry);
+  meta_deregister_module(&metacl_metacl_module_registry);
 }
 
 template <class T>
@@ -158,7 +158,7 @@ void OCLStream<T>::copy()
  // printf("iteration %d\n\n\n\n\n\n", ii);
  // ii++;
  //(*copy_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_c);
-  cl_int err =meta_gen_opencl_babelstream_copy(queue(), &globalWorkSize , &localwg, &d_a(), &d_c(), 0, NULL );
+  cl_int err =metacl_babelstream_copy(queue(), &globalWorkSize , &localwg, NULL, 0, NULL,&d_a(), &d_c() );
   //queue.finish();
   
 }
@@ -168,7 +168,7 @@ void OCLStream<T>::mul()
 {
   
   //(*mul_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_mul(queue(), &globalWorkSize , &localwg, &d_b(), &d_c(), 0, NULL );
+  cl_int err =metacl_babelstream_mul(queue(), &globalWorkSize , &localwg,NULL, 0, NULL, &d_b(), &d_c() );
 
  //queue.finish();
 }
@@ -177,7 +177,7 @@ template <class T>
 void OCLStream<T>::add()
 {
   //(*add_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_add(queue(), &globalWorkSize , &localwg, &d_a(),&d_b(), &d_c(), 0, NULL );
+  cl_int err =metacl_babelstream_add(queue(), &globalWorkSize , &localwg,NULL, 0, NULL, &d_a(),&d_b(), &d_c() );
 
   //queue.finish();
 }
@@ -186,7 +186,7 @@ template <class T>
 void OCLStream<T>::triad()
 {
   //(*triad_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c);
-  cl_int err =meta_gen_opencl_babelstream_triad(queue(), &globalWorkSize , &localwg, &d_a(), &d_b(), &d_c(), 0, NULL );
+  cl_int err =metacl_babelstream_triad(queue(), &globalWorkSize , &localwg,NULL , 0, NULL, &d_a(), &d_b(), &d_c() );
 
   //queue.finish();
 }
@@ -199,7 +199,7 @@ T OCLStream<T>::dot()
   a_dim3 global = {dot_num_groups,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
 
-  cl_int err =meta_gen_opencl_babelstream_stream_dot(queue(), &global, &local, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size,0, NULL );
+  cl_int err =metacl_babelstream_stream_dot(queue(), &global, &local, NULL,0, NULL,&d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size );
   
   cl::copy(queue, d_sum, sums.begin(), sums.end());
   
@@ -215,7 +215,7 @@ void OCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
   //(*init_kernel)(cl::EnqueueArgs(queue, cl::NDRange(array_size)),d_a, d_b, d_c, initA, initB, initC );
   //a_dim3 global = { array_size,1,1};
-  cl_int err= meta_gen_opencl_babelstream_init(queue(), &globalWorkSize , &localwg, &d_a(), &d_b(), &d_c(), initA,  initB,  initC, 0, NULL );
+  cl_int err= metacl_babelstream_init(queue(), &globalWorkSize , &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c(), initA,  initB,  initC );
   //queue.finish();
 }
 
