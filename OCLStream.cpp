@@ -7,6 +7,7 @@
 
 #include "OCLStream.h"
 #include "metamorph.h"
+#include "mm_opencl_backend.h"
 #include "metacl_module.h"
 
 a_dim3 globalWorkSize = {33554432,1,1};
@@ -56,8 +57,8 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   else
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
-   // dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    dot_wgsize     = 64;
+    dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+   // dot_wgsize     = 64;
    //// dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2; 
 }
   
