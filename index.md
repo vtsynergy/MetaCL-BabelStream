@@ -23,6 +23,22 @@ As such this tool can be used as a kind of **Rosetta Stone** which provides both
 
 [1]: McCalpin, John D., 1995: "Memory Bandwidth and Machine Balance in Current High Performance Computers", IEEE Computer Society Technical Committee on Computer Architecture (TCCA) Newsletter, December 1995.
 
+## How is this different to STREAM?
+
+BabelStream implements the four main kernels of the STREAM benchmark (along with a dot product), but by utilising different programming models expands the platforms which the code can run beyond CPUs.
+
+The key differences from STREAM are that:
+* the arrays are allocated on the heap
+* the problem size is unknown at compile time
+* wider platform and programming model support
+
+With stack arrays of known size at compile time, the compiler is able to align data and issue optimal instructions (such as non-temporal stores, remove peel/remainder vectorisation loops, etc.).
+But this information is not typically available in real HPC codes today, where the problem size is read from the user at runtime.
+
+BabelStream therefore provides a measure of what memory bandwidth performance can be attained (by a particular programming model) if you follow today's best parallel programming best practice.
+
+
+
 ## Download
 
 The source code is available on [GitHub](https://github.com/UoB-HPC/BabelStream)
