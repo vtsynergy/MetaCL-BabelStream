@@ -62,7 +62,6 @@ class OCLStream : public Stream<T>
     virtual void copy() override;
     virtual void add() override;
     virtual void mul() override;
-    virtual void print_res() override;
     virtual void triad() override;
     virtual T dot() override;
 
