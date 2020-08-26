@@ -12,105 +12,14 @@
 bool cached = false;
 std::vector<cl::Device> devices;
 void getDeviceList(void);
-cl::Event exec_event;
-std::vector<cl::Event> events;
-cl_ulong start_time,end_time;size_t return_bytes;
-struct timespec start, end;
-
-std::string kernels{R"CLC(
-
-  constant TYPE scalar = startScalar;
-
-  kernel void init(
-    global TYPE * restrict a,
-    global TYPE * restrict b,
-    global TYPE * restrict c,
-    TYPE initA, TYPE initB, TYPE initC)
-  {
-    const size_t i = get_global_id(0);
-    a[i] = initA;
-    b[i] = initB;
-    c[i] = initC;
-  }
-
-  kernel void copy(
-    global const TYPE * restrict a,
-    global TYPE * restrict c)
-  {
-    const size_t i = get_global_id(0);
-    c[i] = a[i];
-  }
-
-  kernel void mul(
-    global TYPE * restrict b,
-    global const TYPE * restrict c)
-  {
-    const size_t i = get_global_id(0);
-    b[i] = scalar * c[i];
-  }
-
-  kernel void add(
-    global const TYPE * restrict a,
-    global const TYPE * restrict b,
-    global TYPE * restrict c)
-  {
-    const size_t i = get_global_id(0);
-    c[i] = a[i] + b[i];
-  }
-
-  kernel void triad(
-    global TYPE * restrict a,
-    global const TYPE * restrict b,
-    global const TYPE * restrict c)
-  {
-    const size_t i = get_global_id(0);
-    a[i] = b[i] + scalar * c[i];
-  }
-
-  kernel void stream_dot(
-    global const TYPE * restrict a,
-    global const TYPE * restrict b,
-    global TYPE * restrict sum,
-    local TYPE * restrict wg_sum,
-    int array_size)
-  {
-    size_t i = get_global_id(0);
-    const size_t local_i = get_local_id(0);
-    wg_sum[local_i] = 0.0;
-    for (; i < array_size; i += get_global_size(0))
-      wg_sum[local_i] += a[i] * b[i];
-
-    for (int offset = get_local_size(0) / 2; offset > 0; offset /= 2)
-    {
-      barrier(CLK_LOCAL_MEM_FENCE);
-      if (local_i < offset)
-      {
-        wg_sum[local_i] += wg_sum[local_i+offset];
-      }
-    }
-
-    if (local_i == 0)
-      sum[get_group_id(0)] = wg_sum[local_i];
-  }
-
-)CLC"};
 
 
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 {
   
- events.push_back(exec_event);
  if (!cached)
     getDeviceList();
- for (int i=0;i<6;i++){
-	ker_launch_over.push_back(0);
-	ker_exec_time.push_back(0);
-	//ker_launch_over_rec.push_back(0);
-	//ker_exec_time_rec.push_back(0);
-  }
-  ker_launch_over_rec.resize(6);
-  ker_exec_time_rec.resize(6);
   
   // Setup default OpenCL GPU
   if (device_index >= devices.size())
@@ -217,17 +126,6 @@ clBinaryProg(babelstream);
 template <class T>
 OCLStream<T>::~OCLStream()
 {
-  printf("Kernel_Init_array_NDRange : %lf\nKernel_Init_array_Event_Based Time: %lf\nKernel_Init_array_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
-  for(int i=0; i<it_monitor;i++)
-{
-  printf("****iteration %d *******\n",i+1);
-  printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead:  %lf\n",ker_launch_over_rec[0][i],ker_exec_time_rec[0][i],ker_launch_over_rec[0][i] - ker_exec_time_rec[0][i]);
-  printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over_rec[1][i],ker_exec_time_rec[1][i],ker_launch_over_rec[1][i] - ker_exec_time_rec[1][i]);
-printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over_rec[2][i],ker_exec_time_rec[2][i],ker_launch_over_rec[2][i] - ker_exec_time_rec[2][i]);
-printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over_rec[3][i],ker_exec_time_rec[3][i],ker_launch_over_rec[3][i] - ker_exec_time_rec[3][i]);
-printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over_rec[4][i],ker_exec_time_rec[4][i],ker_launch_over_rec[4][i] - ker_exec_time_rec[4][i]);
-printf("************************\n\n");
-}
   delete init_kernel;
   delete copy_kernel;
   delete mul_kernel;
@@ -239,111 +137,50 @@ printf("************************\n\n");
 template <class T>
 void OCLStream<T>::copy()
 {
-clock_gettime(CLOCK_REALTIME, &start);  
-exec_event=(*copy_kernel)(
-    cl::EnqueueArgs(queue,cl::NDRange(array_size)),
+  (*copy_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_c
   );
-  exec_event.wait();
-  //queue.finish();
- clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[0]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[0]=static_cast<double>(end_time-start_time)/BILLION;
- exec_event=NULL;
+  queue.finish();
 }
-template <class T>
-void OCLStream<T>::print_res()
-{
-it_monitor++;
 
-for (int i=0;i<=4;i++)
-{
- ker_launch_over_rec[i].push_back(ker_launch_over[i]);
- ker_exec_time_rec[i].push_back(ker_exec_time[i]);
-}
-/*
-printf("****iteration %d *******\n",it_monitor);
-printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead: %lf\n",ker_launch_over[0],ker_exec_time[0],ker_launch_over[0]-ker_exec_time[0]);
-printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over[1],ker_exec_time[1],ker_launch_over[1]-ker_exec_time[1]);
-printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over[2],ker_exec_time[2],ker_launch_over[2]-ker_exec_time[2]);
-printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over[3],ker_exec_time[3],ker_launch_over[3]-ker_exec_time[3]);
-printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over[4],ker_exec_time[4],ker_launch_over[4]-ker_exec_time[4]);
-     
-printf("************************\n\n");
-*/
-}
 template <class T>
 void OCLStream<T>::mul()
 {
-  clock_gettime(CLOCK_REALTIME, &start);  
-   exec_event=(*mul_kernel)(
-    cl::EnqueueArgs(queue,  cl::NDRange(array_size)),
+  (*mul_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_b, d_c
   );
-  exec_event.wait();
-  //queue.finish();
-   clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[1]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[1]=static_cast<double>(end_time-start_time)/BILLION;
- exec_event=NULL;
+  queue.finish();
 }
 
 template <class T>
 void OCLStream<T>::add()
-{ 
-  clock_gettime(CLOCK_REALTIME, &start);  
-  exec_event=(*add_kernel)(
+{
+  (*add_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c
   );
-  exec_event.wait();
-  //queue.finish();
-   clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[2]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[2]=static_cast<double>(end_time-start_time)/BILLION;
- exec_event=NULL;
+  queue.finish();
 }
 
 template <class T>
 void OCLStream<T>::triad()
 {
-  clock_gettime(CLOCK_REALTIME, &start);  
-  exec_event=(*triad_kernel)(
-    cl::EnqueueArgs(queue,cl::NDRange(array_size)),
+  (*triad_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c
   );
-  exec_event.wait();
-  //queue.finish();
-   clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[3]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[3]=static_cast<double>(end_time-start_time)/BILLION;
- exec_event=NULL;
+  queue.finish();
 }
 
 template <class T>
 T OCLStream<T>::dot()
 {
-  clock_gettime(CLOCK_REALTIME, &start);  
-  exec_event=(*dot_kernel)(
+  (*dot_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),
     d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size
   );
-  exec_event.wait();
-  //queue.finish();
-   clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[4]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[4]=static_cast<double>(end_time-start_time)/BILLION;
- exec_event=NULL;
   cl::copy(queue, d_sum, sums.begin(), sums.end());
 
   T sum = 0.0;
@@ -356,22 +193,11 @@ T OCLStream<T>::dot()
 template <class T>
 void OCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
-clock_gettime(CLOCK_REALTIME, &start);  
-  exec_event=(*init_kernel)(
+  (*init_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c, initA, initB, initC
   );
-// exec_event.wait();
- queue.finish();
- clock_gettime(CLOCK_REALTIME, &end);
- ker_launch_over[5]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
- ker_launch_over_rec[5].push_back(( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
- exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
- ker_exec_time[5]=static_cast<double>(end_time-start_time)/BILLION;
- ker_exec_time_rec[5].push_back(ker_exec_time[5]);
- exec_event=NULL;
- 
+  queue.finish();
 }
 
 template <class T>
