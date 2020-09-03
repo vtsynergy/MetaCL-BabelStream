@@ -21,6 +21,23 @@ Currently implemented are:
 
 This code was previously called GPU-STREAM.
 
+
+How is this different to STREAM?
+--------------------------------
+
+BabelStream implements the four main kernels of the STREAM benchmark (along with a dot product), but by utilising different programming models expands the platforms which the code can run beyond CPUs.
+
+The key differences from STREAM are that:
+* the arrays are allocated on the heap
+* the problem size is unknown at compile time
+* wider platform and programming model support
+
+With stack arrays of known size at compile time, the compiler is able to align data and issue optimal instructions (such as non-temporal stores, remove peel/remainder vectorisation loops, etc.).
+But this information is not typically available in real HPC codes today, where the problem size is read from the user at runtime.
+
+BabelStream therefore provides a measure of what memory bandwidth performance can be attained (by a particular programming model) if you follow today's best parallel programming best practice.
+
+
 Website
 -------
 [uob-hpc.github.io/BabelStream/](https://uob-hpc.github.io/BabelStream/)
@@ -44,14 +61,17 @@ The binaries are named in the form `<model>-stream`.
 Building Kokkos
 ---------------
 
-We use the following command to build Kokkos using the Intel Compiler, specifying the `arch` appropriately, e.g. `KNL`.
+Kokkos version >= 3 requires setting the `KOKKOS_PATH` flag to the *source* directory of a distribution. 
+For example:
+
 ```
-../generate_makefile.bash --prefix=<prefix> --with-openmp --with-pthread --arch=<arch> --compiler=icpc --cxxflags=-DKOKKOS_MEMORY_ALIGNMENT=2097152
+cd 
+wget https://github.com/kokkos/kokkos/archive/3.1.01.tar.gz
+tar -xvf 3.1.01.tar.gz # should end up with ~/kokkos-3.1.01
+cd BabelStream
+make -f Kokkos.make KOKKOS_PATH=~/kokkos-3.1.01 
 ```
-For building with CUDA support, we use the following command, specifying the `arch` appropriately, e.g. `Kepler35`.
-```
-../generate_makefile.bash --prefix=<prefix> --with-cuda --with-openmp --with-pthread --arch=<arch> --with-cuda-options=enable_lambda --compiler=<path_to_kokkos_src>/bin/nvcc_wrapper
-```
+See make output for more information on supported flags.
 
 Building RAJA
 -------------
