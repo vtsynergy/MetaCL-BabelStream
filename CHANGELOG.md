@@ -3,7 +3,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- None
+### Added
+- Compiler options for OpenMP and OpenACC GNU offloading to NVIDIA and AMD.
+- Compiler options for Arm Clang added to OpenMP and Kokkos.
+- Kokkos 3 build system (No code changes made).
+- SYCL build rules for ComputeCpp, DPCPP and HipSYCL
+
+### Changed
+- Use cl::sycl::id parameters instead of cl::sycl::item.
+- Update local copy of OpenCL C++ header file.
+- Ensure correct SYCL queue constructor with explicit async_handler.
+- Use built in SYCL runtime device discovery.
+- Cray compiler OpenMP flags updated
+
+### Removed
+- Pre-building of kernels in SYCL version to ensure compatibility with SYCL 1.2.1.
+  Pre-building kernels is also not required, and shows no overhead as the first iteration is not timed.
+- OpenACC Cray compiler flags.
+- Build support for Kokkos 2.x (No code changes made).
 
 ## [v3.4] - 2019-04-10
 
