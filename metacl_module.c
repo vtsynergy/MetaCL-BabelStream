@@ -1,8 +1,11 @@
 //Force MetaMorph to include the OpenCL code
-#ifndef WITH_OPENCL
-#define WITH_OPENCL
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
+#include <CL/opencl.h>
 #endif
 #include "metamorph.h"
+#include "metamorph_opencl.h"
 #include "metacl_module.h"
 extern cl_context meta_context;
 extern cl_command_queue meta_queue;
@@ -40,7 +43,7 @@ void metacl_metacl_module_init() {
     meta_register_module(&metacl_metacl_module_registry);
     return;
   }
-  if (meta_context == NULL) metaOpenCLFallBack();
+  if (meta_context == NULL) metaOpenCLFallback();
   struct __metacl_metacl_module_frame * new_frame = (struct __metacl_metacl_module_frame *) calloc(1, sizeof(struct __metacl_metacl_module_frame));
   new_frame->next_frame = __metacl_metacl_module_current_frame;
   new_frame->device = meta_device;

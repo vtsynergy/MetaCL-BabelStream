@@ -7,7 +7,9 @@
 
 #include "OCLStream.h"
 #include "metamorph.h"
+#include "metamorph_opencl.h"
 #include "metacl_module.h"
+
 #include <time.h>
 #define BILLION 1E9
 a_dim3 globalWorkSize = {33554432,1,1};
@@ -250,7 +252,7 @@ T OCLStream<T>::dot()
 {
   //(*dot_kernel)(cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size);
   
-  a_dim3 global = {dot_num_groups,1,1};
+  a_dim3 global = {dot_num_groups*dot_wgsize,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
   clock_gettime(CLOCK_REALTIME, &start);
   cl_int err =metacl_babelstream_stream_dot(queue(), &global, &local,NULL,0, &exec_event, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);

@@ -510,7 +510,7 @@ void parseArguments(int argc, char *argv[])
 {
   
   
-  for (int i = 2; i < argc; i++)
+  for (int i = 1; i < argc; i++)
   {
     if (!std::string("--list").compare(argv[i]))
     {
