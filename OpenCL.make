@@ -36,6 +36,7 @@ CXXFLAGS:=$(CXXFLAGS) $(FLAGS_$(COMPILER))
 
 LIBS := $(LIBS)
 DEPS=
+AOC_OPTS := $(AOC_OPTS) -DTYPE=double -DstartScalar=0.4
 ifeq ($(FPGA), INTEL_EMU)
   AOC_OPTS := $(AOC_OPTS) -march=emulator
   FPGA=INTEL
