@@ -21,13 +21,13 @@ $(info $(compiler_help))
 COMPILER=GNU
 endif
 
-COMPILER_GNU = g++ -g
+COMPILER_GNU = g++
 COMPILER_CLANG = clang++
 COMPILER_INTEL = icpc
 COMPILER_CRAY = CC
 CXX = $(COMPILER_$(COMPILER))
 
-FLAGS_ = -O3 -std=c++11 
+FLAGS_ = -O3 -std=c++11
 FLAGS_GNU = -O3 -std=c++11
 FLAGS_CLANG = -O3 -std=c++11
 FLAGS_INTEL = -O3 -std=c++11
@@ -55,3 +55,4 @@ ocl-stream: main.cpp OCLStream.cpp $(DEPS)
 .PHONY: clean
 clean:
 	rm -f ocl-stream
+

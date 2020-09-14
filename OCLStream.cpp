@@ -13,14 +13,90 @@ bool cached = false;
 std::vector<cl::Device> devices;
 void getDeviceList(void);
 
+std::string kernels{R"CLC(
+
+  constant TYPE scalar = startScalar;
+
+  kernel void init(
+    global TYPE * restrict a,
+    global TYPE * restrict b,
+    global TYPE * restrict c,
+    TYPE initA, TYPE initB, TYPE initC)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = initA;
+    b[i] = initB;
+    c[i] = initC;
+  }
+
+  kernel void copy(
+    global const TYPE * restrict a,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i];
+  }
+
+  kernel void mul(
+    global TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    b[i] = scalar * c[i];
+  }
+
+  kernel void add(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i] + b[i];
+  }
+
+  kernel void triad(
+    global TYPE * restrict a,
+    global const TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = b[i] + scalar * c[i];
+  }
+
+  kernel void stream_dot(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict sum,
+    local TYPE * restrict wg_sum,
+    int array_size)
+  {
+    size_t i = get_global_id(0);
+    const size_t local_i = get_local_id(0);
+    wg_sum[local_i] = 0.0;
+    for (; i < array_size; i += get_global_size(0))
+      wg_sum[local_i] += a[i] * b[i];
+
+    for (int offset = get_local_size(0) / 2; offset > 0; offset /= 2)
+    {
+      barrier(CLK_LOCAL_MEM_FENCE);
+      if (local_i < offset)
+      {
+        wg_sum[local_i] += wg_sum[local_i+offset];
+      }
+    }
+
+    if (local_i == 0)
+      sum[get_group_id(0)] = wg_sum[local_i];
+  }
+
+)CLC"};
 
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 {
-  
- if (!cached)
+  if (!cached)
     getDeviceList();
-  
+
   // Setup default OpenCL GPU
   if (device_index >= devices.size())
     throw std::runtime_error("Invalid device index");
@@ -96,14 +172,13 @@ clBinaryProg(babelstream);
   }
 
   // Create kernels
-  
   init_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T>(program, "init");
   copy_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "copy");
   mul_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "mul");
   add_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "add");
   triad_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "triad");
   dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
-  
+
   array_size = ARRAY_SIZE;
 
   // Check buffers fit on the device
@@ -131,6 +206,7 @@ OCLStream<T>::~OCLStream()
   delete mul_kernel;
   delete add_kernel;
   delete triad_kernel;
+
   devices.clear();
 }
 
