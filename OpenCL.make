@@ -56,13 +56,12 @@ ocl-stream: main.cpp OCLStream.cpp $(DEPS)
 .PHONY:		 gen_aocx_hw
 
 gen_aocx_hw:
-	aoc -v babelstream.cl 
-	
+	aoc -v -DTYPE=double -DstartScalar=0.4 babelstream.cl
 
 .PHONY:		 gen_aocx_emu
 
 gen_aocx_emu:
-	aoc -v -march=emulator babelstream.cl
+	aoc -v -march=emulator  -DTYPE=double -DstartScalar=0.4  babelstream.cl
 
 
 
