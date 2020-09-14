@@ -10,72 +10,33 @@ $(info $(compiler_help))
 COMPILER=GNU
 endif
 
-COMPILER_GNU = g++ 
+COMPILER_GNU = g++
 COMPILER_CLANG = clang++
 COMPILER_INTEL = icpc
 COMPILER_CRAY = CC
 CXX = $(COMPILER_$(COMPILER))
-CC=gcc
 
-METAMORPH_PATH=../MetaMorph
-
-FLAGS_ = -O3 -std=c++11 -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
-FLAGS_GNU = -O3 -std=c++11 -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend 
-FLAGS_CLANG = -O3 -std=c++11 -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend 
-FLAGS_INTEL = -O3 -std=c++11 -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
-FLAGS_CRAY = -O3 -hstd=c++11 -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
+METAMORPH_PATH=../../MetaMorph
+FLAGS_ = -O3 -std=c++11
+FLAGS_GNU = -O3 -std=c++11
+FLAGS_CLANG = -O3 -std=c++11
+FLAGS_INTEL = -O3 -std=c++11
+FLAGS_CRAY = -O3 -hstd=c++11
 CXXFLAGS=$(FLAGS_$(COMPILER))
+CXXFLAGS := $(CXXFLAGS) -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
 
-
-CFLAGS=-std=c99 
-CPPFLAGS=
-ifeq ($(PLATFORM), INTEL_FPGA)
- CFLAGS +=  $(shell aocl compile-config )
- CPPFLAGS +=  $(shell aocl compile-config )
-endif
-CFLAGS += -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend 
-CPPFLAGS += -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
-
-
+LIBS = -lmetamorph -lmetamorph_opencl
 PLATFORM = $(shell uname -s)
 ifeq ($(PLATFORM), Darwin)
-  LIBS = -framework OpenCL -g
+  LIBS := $(LIBS) -framework OpenCL
 else ifeq ($(PLATFORM), INTEL_FPGA)
-  LIBS = $(shell aocl link-config)
+  LIBS := $(LIBS) $(shell aocl link-config)
 else
-  LIBS = -lOpenCL 
+  LIBS := $(LIBS) -lOpenCL
 endif
 
-#ocl-stream: main.cpp OCLStream.cpp
-#	$(CXX) $(CXXFLAGS) -DOCL $^ $(EXTRA_FLAGS) $(LIBS) -o $@
-
-.SUFFIXES:  .o
-
-OBJS = OCLStream.o main.o $(OCL_OBJS)
-
-OCL_OBJS =  metacl_module.o
-
-TARGET = metababel
-
-$(TARGET) : $(OBJS)
-		g++  -o $@ $(OBJS) -L $(METAMORPH_PATH)/lib -lmetamorph_opencl -lmetamorph -lm   $(LIBS)
-
-OCLStream.o: OCLStream.cpp metacl_module.h
-	$(CXX) $(CXXFLAGS) -D FOO -D OCL -c $< $(LIBS) -o $@
-
-
-#
-# CPP rule
-#
-%.o:	%.cpp 
-	$(CXX) $(CXXFLAGS) -DOCL -c $< $(LIBS) 
-
-
-#
-# C rule
-#
-%.o:	%.c 
-	$(CC) $(CFLAGS) -c $< $(LIBS) $(CFLAGS2)
+ocl-stream: main.cpp OCLStream.cpp metacl_module.c
+	$(CXX) $(CXXFLAGS) -DOCL $^ $(EXTRA_FLAGS) $(LIBS) -o $@
 
 metacl_module.h: metacl_module.c
 
@@ -100,7 +61,11 @@ gen_aocx_hw:
 gen_aocx_emu:
 	aoc -v -march=emulator -DTYPE=double -DstartScalar=0.4 babelstream.cl
 
+.PHONY: clean
+clean:
+	rm -f ocl-stream 
+
+.PHONY: run
 run: 
-	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(METAMORPH_PATH)/lib  ./metababel --device $(dev)
-#run:        
-#         env LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/7:$LD_LIBRARY_PATH $(METAMORPH_PATH)/lib ./metababel --device$(dev)
+	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(METAMORPH_PATH)/lib  ./ocl-stream --device $(dev)
+
