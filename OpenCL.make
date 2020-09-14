@@ -60,7 +60,7 @@ ocl-stream: $(SRC) $(DEPS)
 	$(CXX) $(CXXFLAGS) -DOCL $(SRC) $(EXTRA_FLAGS) $(LIBS) -o $@
 
 babelstream.aocx: babelstream.cl
-	aoc $AOC_OPTS babelstream.cl
+	aoc $(AOC_OPTS) babelstream.cl
 
 .PHONY: clean
 clean:
