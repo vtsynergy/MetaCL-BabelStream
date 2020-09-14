@@ -33,6 +33,23 @@ endif
 ocl-stream: main.cpp OCLStream.cpp
 	$(CXX) $(CXXFLAGS) -DOCL $^ $(EXTRA_FLAGS) $(LIBS) -o $@
 
+
+
+
+.PHONY:		 gen_aocx_hw
+
+gen_aocx_hw:
+	aoc -v babelstream.cl 
+	
+
+.PHONY:		 gen_aocx_emu
+
+gen_aocx_emu:
+	aoc -v -march=emulator babelstream.cl
+
+
+
+
 .PHONY: clean
 clean:
 	rm -f ocl-stream
