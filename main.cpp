@@ -62,11 +62,6 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
-  if(argc>1){
-  char *c =argv[1];
-  deviceIndex= atoi(c);
-  printf("device number entered is %d\n", deviceIndex);
-        }
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -505,7 +500,7 @@ int parseUInt(const char *str, unsigned int *output)
 
 void parseArguments(int argc, char *argv[])
 {
-  for (int i = 2; i < argc; i++)
+  for (int i = 1; i < argc; i++)
   {
     if (!std::string("--list").compare(argv[i]))
     {
