@@ -3,7 +3,7 @@ ifndef FPGA
 define fpga_help
 Set FPGA to change flags (defaulting to NONE).
 Available FPGAs are:
-  NONE INTEL
+  NONE INTEL INTEL_EMU
 
 endef
 $(info $(fpga_help))
@@ -38,7 +38,13 @@ CXXFLAGS := $(CXXFLAGS) -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamo
 
 LIBS := $(LIBS)
 DEPS=
+AOC_OPTS := $(AOC_OPTS) -DTYPE=double -DstartScalar=0.4
+ifeq ($(FPGA), INTEL_EMU)
+  AOC_OPTS := $(AOC_OPTS) -march=emulator
+  FPGA=INTEL
+endif
 ifeq ($(FPGA), INTEL)
+  AOC_OPTS := $(AOC_OPTS) -v
   DEPS := babelstream.aocx
   CXXFLAGS := $(CXXFLAGS) $(shell aocl compile-config)
   LIBS := $(LIBS) $(shell aocl link-config)
@@ -61,22 +67,8 @@ METACL_PATH := $(METAMORPH_PATH)/metamorph-generators/opencl
 metacl_module.c: $(wildcard *.cl)
 	$(METACL_PATH)/metaCL $(wildcard *.cl) --unified-output-file="metacl_module" --cuda-grid-block=false -- -cl-std=CL1.2 --include opencl-c.h -I /usr/lib/llvm-6.0/lib/clang/6.0.1/include/ -D TYPE=double -D startScalar=0.4
 
-
-.PHONY: clean
-clean:
-	rm -f *.o *.mod *.bc metababel metacl_module.* 
-
-
-.PHONY:		 gen_aocx_hw
-
-gen_aocx_hw:
-	aoc -v -DTYPE=double -DstartScalar=0.4 babelstream.cl 
-	
-
-.PHONY:		 gen_aocx_emu
-
-gen_aocx_emu:
-	aoc -v -march=emulator -DTYPE=double -DstartScalar=0.4 babelstream.cl
+babelstream.aocx: babelstream.cl
+	aoc $AOC_OPTS babelstream.cl
 
 .PHONY: clean
 clean:
