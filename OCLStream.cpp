@@ -63,7 +63,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
     dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2;
   }
-  else if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel (R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos))
+  else if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel(R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos))
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
     dot_wgsize=64;
