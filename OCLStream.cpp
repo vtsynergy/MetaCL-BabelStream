@@ -45,6 +45,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   errNum=clRetainCommandQueue(queue());
   errNum=clRetainContext(context());
   errNum=clRetainDevice(device());
+  std::string platName = cl::Platform(device.getInfo<CL_DEVICE_PLATFORM>()).getInfo<CL_PLATFORM_NAME>();
 
   // Determine sensible dot kernel NDRange configuration
   //cl::Device device(device1,true);
@@ -54,17 +55,20 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
     dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2;
   }
+  else if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel (R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos))
+  {
+    dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
+    dot_wgsize=64;
+  }
   else
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
     dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-   // dot_wgsize     = 64;
-   //// dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2; 
-}
+  }
   
   std::string driver;
   device.getInfo(CL_DRIVER_VERSION, &driver);
-  
+
   // Print out device information
   //std::cout << "Using OpenCL device " << getDeviceName(device_index) << std::endl;
   
