@@ -101,6 +101,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   if (device_index >= devices.size())
     throw std::runtime_error("Invalid device index");
   device = devices[device_index];
+  std::string platName = cl::Platform(device.getInfo<CL_DEVICE_PLATFORM>()).getInfo<CL_PLATFORM_NAME>();
 
   // Determine sensible dot kernel NDRange configuration
   if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_CPU)
@@ -108,11 +109,15 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
     dot_wgsize     = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>() * 2;
   }
+  else if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel (R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos))
+  {
+    dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
+    dot_wgsize=64;
+  }
   else
   {
     dot_num_groups = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() * 4;
-   // dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-    dot_wgsize=64;
+    dot_wgsize     = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
   }
 
   // Print out device information
@@ -121,12 +126,13 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   std::cout << "Reduction kernel config: " << dot_num_groups << " groups of size " << dot_wgsize << std::endl;
 
   context = cl::Context(device);
-  queue = cl::CommandQueue(context,CL_QUEUE_PROFILING_ENABLE);
- //queue=cl::CommandQueue(context, device,CL_QUEUE_PROFILING_ENABLE, NULL);
+  queue = cl::CommandQueue(context);
+
   // Create program
- 
-  #define clBinaryProg(name) \
-cl_program name; { \
+  cl::Program program;
+  if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel (R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos)) {
+    #define clBinaryProg(name) \
+    cl_program name; { \
        printf("Loading "#name".aocx\n"); \
 FILE * f = fopen(#name".aocx", "r"); \
        fseek(f, 0, SEEK_END); \
@@ -137,13 +143,11 @@ FILE * f = fopen(#name".aocx", "r"); \
        fclose(f); \
        cl_int err2; \
        name = clCreateProgramWithBinary(context(), 1, &device(), &len, &progSrc, NULL, &err2);}
-clBinaryProg(babelstream);
-// cl::Program program = cl::Program{context, devices, bin, &binary_status, &err};
-   cl::Program program(babelstream);
- 
-
-
-  // cl::Program program(context, kernels);
+    clBinaryProg(babelstream);
+    program = cl::Program(babelstream);
+  } else {
+    program = cl::Program(context, kernels);
+  }
   std::ostringstream args;
   args << "-DstartScalar=" << startScalar << " ";
   if (sizeof(T) == sizeof(double))
