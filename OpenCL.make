@@ -69,7 +69,7 @@ metacl_module.c: $(wildcard *.cl)
 	$(METACL_PATH)/metaCL $(wildcard *.cl) --unified-output-file="metacl_module" --cuda-grid-block=false -- -cl-std=CL1.2 --include opencl-c.h -I /usr/lib/llvm-6.0/lib/clang/6.0.1/include/ -D TYPE=double -D startScalar=0.4
 
 babelstream.aocx: babelstream.cl
-	aoc $AOC_OPTS babelstream.cl
+	aoc $(AOC_OPTS) babelstream.cl
 
 .PHONY: clean
 clean:
