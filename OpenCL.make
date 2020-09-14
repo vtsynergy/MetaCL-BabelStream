@@ -84,6 +84,20 @@ metacl_module.c: $(wildcard *.cl)
 	$(METACL_PATH)/metaCL $(wildcard *.cl) --unified-output-file="metacl_module" --cuda-grid-block=true -- -cl-std=CL1.2 --include opencl-c.h -I /usr/lib/llvm-6.0/lib/clang/6.0.1/include/ -D TYPE=double -D startScalar=0.4
 
 
+
+.PHONY:		 gen_aocx_hw
+
+gen_aocx_hw:
+	aoc -v babelstream.cl 
+	
+
+.PHONY:		 gen_aocx_emu
+
+gen_aocx_emu:
+	aoc -v -march=emulator babelstream.cl
+
+
+
 .PHONY: clean
 clean:
 	rm -f *.o *.mod *.bc metababel metacl_module.* 
