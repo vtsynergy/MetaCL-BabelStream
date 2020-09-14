@@ -89,6 +89,17 @@ clean:
 	rm -f *.o *.mod *.bc metababel metacl_module.* 
 
 
+.PHONY:		 gen_aocx_hw
+
+gen_aocx_hw:
+	aoc -v babelstream.cl 
+	
+
+.PHONY:		 gen_aocx_emu
+
+gen_aocx_emu:
+	aoc -v -march=emulator babelstream.cl
+
 run: 
 	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(METAMORPH_PATH)/lib  ./metababel --device $(dev)
 #run:        
