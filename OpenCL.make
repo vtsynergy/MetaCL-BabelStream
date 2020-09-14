@@ -55,8 +55,9 @@ else
   LIBS := $(LIBS) -lOpenCL
 endif
 
-ocl-stream: main.cpp OCLStream.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) -DOCL $^ $(EXTRA_FLAGS) $(LIBS) -o $@
+SRC = main.cpp OCLStream.cpp
+ocl-stream: $(SRC) $(DEPS)
+	$(CXX) $(CXXFLAGS) -DOCL $(SRC) $(EXTRA_FLAGS) $(LIBS) -o $@
 
 babelstream.aocx: babelstream.cl
 	aoc $AOC_OPTS babelstream.cl
