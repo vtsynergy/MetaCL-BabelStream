@@ -58,8 +58,9 @@ else
   LIBS := $(LIBS) -lOpenCL
 endif
 
-ocl-stream: main.cpp OCLStream.cpp metacl_module.c $(DEPS)
-	$(CXX) $(CXXFLAGS) -DOCL $^ $(EXTRA_FLAGS) $(LIBS) -o $@
+SRC = main.cpp OCLStream.cpp metacl_module.c
+ocl-stream: $(SRC) $(DEPS)
+	$(CXX) $(CXXFLAGS) -DOCL $(SRC) $(EXTRA_FLAGS) $(LIBS) -o $@
 
 metacl_module.h: metacl_module.c
 
