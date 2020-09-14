@@ -5,7 +5,7 @@
 #include <CL/opencl.h>
 #endif
 #include "metamorph.h"
-#include "mm_opencl_backend.h"
+#include "metamorph_opencl.h"
 #include "metacl_module.h"
 extern cl_context meta_context;
 extern cl_command_queue meta_queue;
@@ -121,7 +121,7 @@ void metacl_metacl_module_deinit() {
   }
 }
 
-cl_int metacl_babelstream_init(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c, cl_double initA, cl_double initB, cl_double initC) {
+cl_int metacl_babelstream_init(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c, cl_double initA, cl_double initB, cl_double initC) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -129,7 +129,7 @@ cl_int metacl_babelstream_init(cl_command_queue queue, size_t (*grid_size)[3], s
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -139,18 +139,18 @@ cl_int metacl_babelstream_init(cl_command_queue queue, size_t (*grid_size)[3], s
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_init_kernel, 0, sizeof(cl_mem), a);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"a\", host wrapper: \"metacl_babelstream_init\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
@@ -173,7 +173,7 @@ cl_int metacl_babelstream_init(cl_command_queue queue, size_t (*grid_size)[3], s
   return retCode;
 }
 
-cl_int metacl_babelstream_copy(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * c) {
+cl_int metacl_babelstream_copy(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * c) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -181,7 +181,7 @@ cl_int metacl_babelstream_copy(cl_command_queue queue, size_t (*grid_size)[3], s
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -191,18 +191,18 @@ cl_int metacl_babelstream_copy(cl_command_queue queue, size_t (*grid_size)[3], s
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_copy_kernel, 0, sizeof(cl_mem), a);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"a\", host wrapper: \"metacl_babelstream_copy\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
@@ -217,7 +217,7 @@ cl_int metacl_babelstream_copy(cl_command_queue queue, size_t (*grid_size)[3], s
   return retCode;
 }
 
-cl_int metacl_babelstream_mul(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * b, cl_mem * c) {
+cl_int metacl_babelstream_mul(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * b, cl_mem * c) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -225,7 +225,7 @@ cl_int metacl_babelstream_mul(cl_command_queue queue, size_t (*grid_size)[3], si
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -235,18 +235,18 @@ cl_int metacl_babelstream_mul(cl_command_queue queue, size_t (*grid_size)[3], si
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_mul_kernel, 0, sizeof(cl_mem), b);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"b\", host wrapper: \"metacl_babelstream_mul\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
@@ -261,7 +261,7 @@ cl_int metacl_babelstream_mul(cl_command_queue queue, size_t (*grid_size)[3], si
   return retCode;
 }
 
-cl_int metacl_babelstream_add(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c) {
+cl_int metacl_babelstream_add(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -269,7 +269,7 @@ cl_int metacl_babelstream_add(cl_command_queue queue, size_t (*grid_size)[3], si
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -279,18 +279,18 @@ cl_int metacl_babelstream_add(cl_command_queue queue, size_t (*grid_size)[3], si
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_add_kernel, 0, sizeof(cl_mem), a);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"a\", host wrapper: \"metacl_babelstream_add\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
@@ -307,7 +307,7 @@ cl_int metacl_babelstream_add(cl_command_queue queue, size_t (*grid_size)[3], si
   return retCode;
 }
 
-cl_int metacl_babelstream_triad(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c) {
+cl_int metacl_babelstream_triad(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * c) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -315,7 +315,7 @@ cl_int metacl_babelstream_triad(cl_command_queue queue, size_t (*grid_size)[3], 
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -325,18 +325,18 @@ cl_int metacl_babelstream_triad(cl_command_queue queue, size_t (*grid_size)[3], 
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_triad_kernel, 0, sizeof(cl_mem), a);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"a\", host wrapper: \"metacl_babelstream_triad\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
@@ -353,7 +353,7 @@ cl_int metacl_babelstream_triad(cl_command_queue queue, size_t (*grid_size)[3], 
   return retCode;
 }
 
-cl_int metacl_babelstream_stream_dot(cl_command_queue queue, size_t (*grid_size)[3], size_t (*block_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * sum, size_t wg_sum_num_local_elems, cl_int array_size) {
+cl_int metacl_babelstream_stream_dot(cl_command_queue queue, size_t (*global_size)[3], size_t (*local_size)[3], size_t (*meta_offset)[3], int async, cl_event * event, cl_mem * a, cl_mem * b, cl_mem * sum, size_t wg_sum_num_local_elems, cl_int array_size) {
   if (metacl_metacl_module_registration == NULL) meta_register_module(&metacl_metacl_module_registry);
   struct __metacl_metacl_module_frame * frame = __metacl_metacl_module_current_frame;
   if (queue != NULL) frame = __metacl_metacl_module_lookup_frame(queue);
@@ -361,7 +361,7 @@ cl_int metacl_babelstream_stream_dot(cl_command_queue queue, size_t (*grid_size)
   if (frame == NULL) return CL_INVALID_COMMAND_QUEUE;
   if (frame->babelstream_init != 1) return CL_INVALID_PROGRAM;
   cl_int retCode = CL_SUCCESS;
-  a_bool nullBlock = (block_size != NULL && (*block_size)[0] == 0 && (*block_size)[1] == 0 && (*block_size)[2] == 0);
+  a_bool nullBlock = (local_size != NULL && (*local_size)[0] == 0 && (*local_size)[1] == 0 && (*local_size)[2] == 0);
   size_t _global_size[3];
   size_t _local_size[3] = METAMORPH_OCL_DEFAULT_BLOCK_3D;
   size_t _temp_offset[3];
@@ -371,18 +371,18 @@ cl_int metacl_babelstream_stream_dot(cl_command_queue queue, size_t (*grid_size)
   int iters;
 
   //Default runs a single workgroup
-  if (grid_size == NULL || block_size == NULL) {
+  if (global_size == NULL || local_size == NULL) {
     _global_size[0] = _local_size[0];
     _global_size[1] = _local_size[1];
     _global_size[2] = _local_size[2];
     iters = 1;
   } else {
-    _global_size[0] = (*grid_size)[0] * (nullBlock ? 1 : (*block_size)[0]);
-    _global_size[1] = (*grid_size)[1] * (nullBlock ? 1 : (*block_size)[1]);
-    _global_size[2] = (*grid_size)[2] * (nullBlock ? 1 : (*block_size)[2]);
-    _local_size[0] = (*block_size)[0];
-    _local_size[1] = (*block_size)[1];
-    _local_size[2] = (*block_size)[2];
+    _global_size[0] = (*global_size)[0];
+    _global_size[1] = (*global_size)[1];
+    _global_size[2] = (*global_size)[2];
+    _local_size[0] = (*local_size)[0];
+    _local_size[1] = (*local_size)[1];
+    _local_size[2] = (*local_size)[2];
   }
   retCode = clSetKernelArg(frame->babelstream_stream_dot_kernel, 0, sizeof(cl_mem), a);
   if (retCode != CL_SUCCESS) fprintf(stderr, "OpenCL kernel argument assignment error (arg: \"a\", host wrapper: \"metacl_babelstream_stream_dot\") %d at %s:%d\n", retCode, __FILE__, __LINE__);
