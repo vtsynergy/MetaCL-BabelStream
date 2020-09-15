@@ -207,6 +207,17 @@ FILE * f = fopen(#name".aocx", "r"); \
 }
 
 template <class T>
+void OCLStream<T>::print_res()
+{
+  it_monitor++;
+
+  for (int i=0;i<=4;i++)
+  {
+    ker_launch_over_rec[i].push_back(ker_launch_over[i]);
+    ker_exec_time_rec[i].push_back(ker_exec_time[i]);
+  }
+}
+template <class T>
 OCLStream<T>::~OCLStream()
 {
   printf("Kernel_Init_array_NDRange : %lf\nKernel_Init_array_Event_Based Time: %lf\nKernel_Init_array_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
@@ -244,17 +255,6 @@ void OCLStream<T>::copy()
   exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
   ker_exec_time[0]=static_cast<double>(end_time-start_time)/BILLION;
   exec_event=NULL;
-}
-template <class T>
-void OCLStream<T>::print_res()
-{
-  it_monitor++;
-
-  for (int i=0;i<=4;i++)
-  {
-    ker_launch_over_rec[i].push_back(ker_launch_over[i]);
-    ker_exec_time_rec[i].push_back(ker_exec_time[i]);
-  }
 }
 template <class T>
 void OCLStream<T>::mul()
