@@ -13,7 +13,6 @@ bool cached = false;
 std::vector<cl::Device> devices;
 void getDeviceList(void);
 cl::Event exec_event;
-std::vector<cl::Event> events;
 cl_ulong start_time,end_time;size_t return_bytes;
 struct timespec start, end;
 
@@ -99,7 +98,6 @@ std::string kernels{R"CLC(
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):ker_launch_over(6, 0.0), ker_exec_time(6, 0.0), ker_exec_time_rec(6), ker_launch_over_rec(6)
 {
-  events.push_back(exec_event);
   if (!cached)
     getDeviceList();
 
