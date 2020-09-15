@@ -10,6 +10,15 @@ $(info $(fpga_help))
 FPGA=NONE
 endif
 
+ifndef METACL 
+METACL := $(shell which metaCL)
+define metaCL_help
+Set METACL to change binary location, attempting to use MetaCL at "$(METACL)"
+
+endef
+$(info $(metaCL_help))
+endif
+
 ifndef COMPILER
 define compiler_help
 Set COMPILER to change flags (defaulting to GNU).
@@ -27,14 +36,12 @@ COMPILER_INTEL = icpc
 COMPILER_CRAY = CC
 CXX = $(COMPILER_$(COMPILER))
 
-METAMORPH_PATH=../../MetaMorph
 FLAGS_ = -O3 -std=c++11
 FLAGS_GNU = -O3 -std=c++11
 FLAGS_CLANG = -O3 -std=c++11
 FLAGS_INTEL = -O3 -std=c++11
 FLAGS_CRAY = -O3 -hstd=c++11
 CXXFLAGS:=$(CXXFLAGS) $(FLAGS_$(COMPILER))
-CXXFLAGS := $(CXXFLAGS) -I $(METAMORPH_PATH)/include -I $(METAMORPH_PATH)/metamorph-backends/opencl-backend
 
 LIBS := $(LIBS)
 DEPS=
@@ -64,18 +71,13 @@ ocl-stream: $(SRC) $(DEPS)
 
 metacl_module.h: metacl_module.c
 
-METACL_PATH := $(METAMORPH_PATH)/metamorph-generators/opencl
 metacl_module.c: $(wildcard *.cl)
-	$(METACL_PATH)/metaCL $(wildcard *.cl) --unified-output-file="metacl_module" --cuda-grid-block=true -- -cl-std=CL1.2 --include opencl-c.h -I /usr/lib/llvm-6.0/lib/clang/6.0.1/include/ -D TYPE=double -D startScalar=0.4
+	$(METACL) $(wildcard *.cl) --unified-output-file="metacl_module" --cuda-grid-block=false -- -cl-std=CL1.2 --include opencl-c.h $(METACL_CFLAGS) -D TYPE=double -D startScalar=0.4
 
 babelstream.aocx: babelstream.cl
 	aoc $(AOC_OPTS) babelstream.cl
 
 .PHONY: clean
 clean:
-	rm -f ocl-stream 
-
-.PHONY: run
-run: 
-	 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(METAMORPH_PATH)/lib  ./ocl-stream --device $(dev)
+	rm -f ocl-stream metacl_module.* 
 
