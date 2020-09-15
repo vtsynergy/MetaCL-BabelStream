@@ -42,14 +42,6 @@ class OCLStream : public Stream<T>
     cl::Context context;
     cl::CommandQueue queue;
 
-    /*
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T> *init_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer> *copy_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer> * mul_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *add_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *triad_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> *dot_kernel;
-     */
     // NDRange configuration for the dot kernel
     size_t dot_num_groups;
     size_t dot_wgsize;
