@@ -6,16 +6,16 @@
 // source code
 
 #include "OCLStream.h"
+
 #ifdef METACL
 #include "metamorph.h"
 #include "metamorph_opencl.h"
 #include "metacl_module.h"
-
 a_dim3 globalWorkSize = {1, 1, 1};
 a_dim3 localwg = {0, 0, 0};
 #else
 std::vector<cl::Device> devices;
-#endif
+#endif //METACL
 
 // Cache list of devices
 bool cached = false;
@@ -25,8 +25,9 @@ cl::Event exec_event;
 #define BILLION 1E9
 cl_ulong start_time,end_time;size_t return_bytes;
 struct timespec start, end;
-#endif
+#endif //KERNEL_PROFILE
 
+#ifndef METACL
 std::string kernels{R"CLC(
 
   constant TYPE scalar = startScalar;
@@ -104,8 +105,23 @@ std::string kernels{R"CLC(
   }
 
 )CLC"};
+#endif //METACL
 
+#ifdef KERNEL_PROFILE
 template <class T>
+void OCLStream<T>::print_res()
+{
+  it_monitor++;
+
+  for (int i=0;i<=4;i++)
+  {
+    ker_launch_over_rec[i].push_back(ker_launch_over[i]);
+    ker_exec_time_rec[i].push_back(ker_exec_time[i]);
+  }
+}
+template <class T>
+#endif //KERNEL_PROFILE
+
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):ker_launch_over(6, 0.0), ker_exec_time(6, 0.0), ker_exec_time_rec(6), ker_launch_over_rec(6)
 {
 #ifdef METACL
@@ -127,7 +143,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):k
   if (device_index >= devices.size())
     throw std::runtime_error("Invalid device index");
   device = devices[device_index];
-#endif
+#endif //METACL
   std::string platName = cl::Platform(device.getInfo<CL_DEVICE_PLATFORM>()).getInfo<CL_PLATFORM_NAME>();
 
   // Determine sensible dot kernel NDRange configuration
@@ -155,7 +171,7 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):k
 #else
   name = getDeviceName(device_index);
   driver = getDeviceDriver(device_index);
-#endif
+#endif //METACL
   std::cout << "Using OpenCL device " << name << std::endl;
   std::cout << "Driver: " << driver << std::endl;
   std::cout << "Reduction kernel config: " << dot_num_groups << " groups of size " << dot_wgsize << std::endl;
@@ -253,17 +269,6 @@ FILE * f = fopen(#name".aocx", "r"); \
 }
 
 template <class T>
-void OCLStream<T>::print_res()
-{
-  it_monitor++;
-
-  for (int i=0;i<=4;i++)
-  {
-    ker_launch_over_rec[i].push_back(ker_launch_over[i]);
-    ker_exec_time_rec[i].push_back(ker_exec_time[i]);
-  }
-}
-template <class T>
 OCLStream<T>::~OCLStream()
 {
 #ifdef KERNEL_PROFILE
@@ -278,7 +283,7 @@ OCLStream<T>::~OCLStream()
     printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over_rec[4][i],ker_exec_time_rec[4][i],ker_launch_over_rec[4][i] - ker_exec_time_rec[4][i]);
     printf("************************\n\n");
   }
-#endif
+#endif //KERNEL_PROFILE
 #ifdef METACL
   meta_deregister_module(&metacl_metacl_module_registry);
 #else
@@ -289,7 +294,7 @@ OCLStream<T>::~OCLStream()
   delete triad_kernel;
 
   devices.clear();
-#endif
+#endif //METACL
 }
 
 template <class T>
@@ -299,7 +304,7 @@ void OCLStream<T>::copy()
   clock_gettime(CLOCK_REALTIME, &start);
 #endif //KERNEL_PROFILE
 #ifdef METACL
-  metacl_babelstream_copy(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_c());
+  metacl_babelstream_copy(queue(), &globalWorkSize, &localwg, NULL, 0, &exec_event(), &d_a(), &d_c());
 #else
   exec_event=(*copy_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
@@ -324,7 +329,7 @@ void OCLStream<T>::mul()
   clock_gettime(CLOCK_REALTIME, &start);
 #endif //KERNEL_PROFILE
 #ifdef METACL
-  metacl_babelstream_mul(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_b(), &d_c());
+  metacl_babelstream_mul(queue(), &globalWorkSize, &localwg, NULL, 0, &exec_event(), &d_b(), &d_c());
 #else
   exec_event=(*mul_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
@@ -349,7 +354,7 @@ void OCLStream<T>::add()
   clock_gettime(CLOCK_REALTIME, &start);
 #endif //KERNEL_PROFILE
 #ifdef METACL
-  metacl_babelstream_add(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
+  metacl_babelstream_add(queue(), &globalWorkSize, &localwg, NULL, 0, &exec_event(), &d_a(), &d_b(), &d_c());
 #else
   exec_event=(*add_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
@@ -374,7 +379,7 @@ void OCLStream<T>::triad()
   clock_gettime(CLOCK_REALTIME, &start);
 #endif //KERNEL_PROFILE
 #ifdef METACL
-  metacl_babelstream_triad(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
+  metacl_babelstream_triad(queue(), &globalWorkSize, &localwg, NULL, 0, &exec_event(), &d_a(), &d_b(), &d_c());
 #else
   exec_event=(*triad_kernel)(
     cl::EnqueueArgs(queue,cl::NDRange(array_size)),
@@ -402,7 +407,7 @@ T OCLStream<T>::dot()
   a_dim3 global = {dot_num_groups*dot_wgsize,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
 
-  metacl_babelstream_stream_dot(queue(), &global, &local, NULL, 0, NULL, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);
+  metacl_babelstream_stream_dot(queue(), &global, &local, NULL, 0, &exec_event(), &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);
 #else
   exec_event=(*dot_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),
@@ -434,7 +439,7 @@ void OCLStream<T>::init_arrays(T initA, T initB, T initC)
   clock_gettime(CLOCK_REALTIME, &start);
 #endif //KERNEL_PROFILE
 #ifdef METACL
-  metacl_babelstream_init(queue(), &globalWorkSize , &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c(), initA, initB, initC);
+  metacl_babelstream_init(queue(), &globalWorkSize , &localwg, NULL, 0, &exec_event(), &d_a(), &d_b(), &d_c(), initA, initB, initC);
 #else
   exec_event=(*init_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),

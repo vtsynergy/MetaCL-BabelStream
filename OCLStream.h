@@ -74,6 +74,7 @@ class OCLStream : public Stream<T>
     virtual void triad() override;
     virtual T dot() override;
 
+    virtual void print_res() override;
     virtual void init_arrays(T initA, T initB, T initC) override;
     virtual void read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c) override;
 
