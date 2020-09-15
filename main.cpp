@@ -216,9 +216,11 @@ void run()
     sum = stream->dot();
     t2 = std::chrono::high_resolution_clock::now();
     timings[4].push_back(std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count());
+#ifdef KERNEL_PROFILE
     #if defined(OCL)
 	stream->print_res();
     #endif
+#endif
 
   }
 

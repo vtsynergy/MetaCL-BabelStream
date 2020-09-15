@@ -119,11 +119,15 @@ void OCLStream<T>::print_res()
     ker_exec_time_rec[i].push_back(ker_exec_time[i]);
   }
 }
-template <class T>
-#endif //KERNEL_PROFILE
 
+template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):ker_launch_over(6, 0.0), ker_exec_time(6, 0.0), ker_exec_time_rec(6), ker_launch_over_rec(6)
 {
+#else
+template <class T>
+OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
+{
+#endif //KERNEL_PROFILE
 #ifdef METACL
   cl::Platform platformlist;
   cl_int errNum;
@@ -235,11 +239,12 @@ FILE * f = fopen(#name".aocx", "r"); \
     program.build(args.str().c_str());
 #endif
   }
+
+#ifdef METACL
   std::string c_args = args.str();
   __metacl_babelstream_custom_args= c_args.c_str();
   meta_register_module(&metacl_metacl_module_registry);
-
-#ifndef METACL
+#else
   // Create kernels
   init_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T>(program, "init");
   copy_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "copy");
@@ -247,7 +252,7 @@ FILE * f = fopen(#name".aocx", "r"); \
   add_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "add");
   triad_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "triad");
   dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
-#endif
+#endif //METACL
 
   array_size = ARRAY_SIZE;
 

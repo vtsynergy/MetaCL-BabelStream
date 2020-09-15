@@ -57,7 +57,17 @@ ifeq ($(FPGA), INTEL)
   LIBS := $(LIBS) $(shell aocl link-config)
 endif
 
-LIBS = -lmetamorph -lmetamorph_opencl
+
+SRC = main.cpp OCLStream.cpp
+LIBS =
+ifdef KERNEL_PROFILE
+EXTRA_FLAGS := $(EXTRA_FLAGS) -DKERNEL_PROFILE
+endif
+ifdef USE_METACL
+SRC := $(SRC) metacl_module.c
+EXTRA_FLAGS := $(EXTRA_FLAGS) -DMETACL
+LIBS := $(LIBS) -lmetamorph -lmetamorph_opencl
+endif
 PLATFORM = $(shell uname -s)
 ifeq ($(PLATFORM), Darwin)
   LIBS := $(LIBS) -framework OpenCL
@@ -65,14 +75,6 @@ else
   LIBS := $(LIBS) -lOpenCL
 endif
 
-SRC = main.cpp OCLStream.cpp
-ifdef KERNEL_PROFILE
-EXTRA_FLAGS := $(EXTRA_FLAGS) -DKERNEL_PROFILE
-endif
-ifdef METACL
-SRC := $(SRC) metacl_module.c
-EXTRA_FLAGS := $(EXTRA_FLAGS) -DMETACL
-endif
 ocl-stream: $(SRC) $(DEPS)
 	$(CXX) $(CXXFLAGS) -DOCL $(SRC) $(EXTRA_FLAGS) $(LIBS) -o $@
 
