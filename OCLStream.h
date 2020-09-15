@@ -31,28 +31,23 @@ class OCLStream : public Stream<T>
     // Host array for partial sums for dot kernel
     std::vector<T> sums;
 
+    std::vector<double> ker_launch_over;
+    std::vector<double> ker_exec_time;
+    std::vector<std::vector<double>> ker_exec_time_rec;
+    std::vector<std::vector<double>> ker_launch_over_rec;
+
     // Device side pointers to arrays
     cl::Buffer d_a;
     cl::Buffer d_b;
     cl::Buffer d_c;
     cl::Buffer d_sum;
-    std::vector<double> ker_launch_over;
-    std::vector<double> ker_exec_time;
-std::vector<std::vector<double>> ker_exec_time_rec;
-    std::vector<std::vector<double>> ker_launch_over_rec;
+
+    int it_monitor=0;
     // OpenCL objects
     cl::Device device;
     cl::Context context;
     cl::CommandQueue queue;
-    int it_monitor=0;
-    /*
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T> *init_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer> *copy_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer> * mul_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *add_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer> *triad_kernel;
-    cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int> *dot_kernel;
-     */
+
     // NDRange configuration for the dot kernel
     size_t dot_num_groups;
     size_t dot_wgsize;
@@ -67,6 +62,7 @@ std::vector<std::vector<double>> ker_exec_time_rec;
     virtual void mul() override;
     virtual void triad() override;
     virtual T dot() override;
+
     virtual void print_res() override;
     virtual void init_arrays(T initA, T initB, T initC) override;
     virtual void read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c) override;

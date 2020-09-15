@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <cstring>
-#include <stdlib.h>
+
 #define VERSION_STRING "3.4"
 
 #include "Stream.h"
@@ -48,7 +48,6 @@ bool triad_only = false;
 bool output_as_csv = false;
 bool mibibytes = false;
 std::string csv_separator = ",";
-double kernel_launch, kernel_exec;
 
 template <typename T>
 void check_solution(const unsigned int ntimes, std::vector<T>& a, std::vector<T>& b, std::vector<T>& c, T& sum);
@@ -63,11 +62,7 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
-  char *c =argv[1];
-  deviceIndex= atoi(c);
- 
-  printf("device number entered is %d\n", deviceIndex);
-        
+
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -190,11 +185,9 @@ void run()
   std::chrono::high_resolution_clock::time_point t1, t2;
 
   // Main loop
-  printf("\n");
   for (unsigned int k = 0; k < num_times; k++)
   {
     // Execute Copy
-    //printf("iteration %d done\n",k);
     t1 = std::chrono::high_resolution_clock::now();
     stream->copy();
     t2 = std::chrono::high_resolution_clock::now();
@@ -226,6 +219,7 @@ void run()
     #if defined(OCL)
 	stream->print_res();
     #endif
+
   }
 
   // Check solutions
@@ -508,13 +502,10 @@ int parseUInt(const char *str, unsigned int *output)
 
 void parseArguments(int argc, char *argv[])
 {
-  
-  
   for (int i = 1; i < argc; i++)
   {
     if (!std::string("--list").compare(argv[i]))
     {
-      //listDevices();
       exit(EXIT_SUCCESS);
     }
     else if (!std::string("--device").compare(argv[i]))
@@ -525,16 +516,6 @@ void parseArguments(int argc, char *argv[])
         exit(EXIT_FAILURE);
       }
     }
-
-    else if (!std::string("--kernel_exectution").compare(argv[i]))
-    {
-      kernel_exec=1;
-    }
-     else if (!std::string("--kernel_launch").compare(argv[i]))
-    {
-      kernel_launch=1;
-    }
-
     else if (!std::string("--arraysize").compare(argv[i]) ||
              !std::string("-s").compare(argv[i]))
     {
