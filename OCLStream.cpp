@@ -86,7 +86,8 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):k
   {
     args << "-DTYPE=float";
   }
-  __metacl_babelstream_custom_args= args.str().c_str();
+  std::string c_args = args.str();
+  __metacl_babelstream_custom_args= c_args.c_str();
   meta_register_module(&metacl_metacl_module_registry);
 
   array_size = ARRAY_SIZE;
