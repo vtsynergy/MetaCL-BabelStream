@@ -30,8 +30,7 @@ class OCLStream : public Stream<T>
 
     // Host array for partial sums for dot kernel
     std::vector<T> sums;
-  
- 
+
     // Device side pointers to arrays
     cl::Buffer d_a;
     cl::Buffer d_b;

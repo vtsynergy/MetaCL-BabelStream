@@ -6,8 +6,7 @@
 // source code
 
 #include "OCLStream.h"
-#include <time.h>
-#define BILLION 1E9
+
 // Cache list of devices
 bool cached = false;
 std::vector<cl::Device> devices;
@@ -90,6 +89,7 @@ std::string kernels{R"CLC(
   }
 
 )CLC"};
+
 
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)

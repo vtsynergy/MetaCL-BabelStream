@@ -62,6 +62,7 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -215,9 +216,7 @@ void run()
     sum = stream->dot();
     t2 = std::chrono::high_resolution_clock::now();
     timings[4].push_back(std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count());
-    
 
-	
   }
 
   // Check solutions
