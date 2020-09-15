@@ -62,6 +62,7 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -219,7 +220,6 @@ void run()
 	stream->print_res();
     #endif
 
-	
   }
 
   // Check solutions
