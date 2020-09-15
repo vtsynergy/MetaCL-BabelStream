@@ -6,21 +6,102 @@
 // source code
 
 #include "OCLStream.h"
+#ifdef METACL
 #include "metamorph.h"
 #include "metamorph_opencl.h"
 #include "metacl_module.h"
 
 a_dim3 globalWorkSize = {1, 1, 1};
 a_dim3 localwg = {0, 0, 0};
-
+#else
+std::vector<cl::Device> devices;
+#endif
 // Cache list of devices
 bool cached = false;
 void getDeviceList(void);
 
+std::string kernels{R"CLC(
+
+  constant TYPE scalar = startScalar;
+
+  kernel void init(
+    global TYPE * restrict a,
+    global TYPE * restrict b,
+    global TYPE * restrict c,
+    TYPE initA, TYPE initB, TYPE initC)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = initA;
+    b[i] = initB;
+    c[i] = initC;
+  }
+
+  kernel void copy(
+    global const TYPE * restrict a,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i];
+  }
+
+  kernel void mul(
+    global TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    b[i] = scalar * c[i];
+  }
+
+  kernel void add(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    c[i] = a[i] + b[i];
+  }
+
+  kernel void triad(
+    global TYPE * restrict a,
+    global const TYPE * restrict b,
+    global const TYPE * restrict c)
+  {
+    const size_t i = get_global_id(0);
+    a[i] = b[i] + scalar * c[i];
+  }
+
+  kernel void stream_dot(
+    global const TYPE * restrict a,
+    global const TYPE * restrict b,
+    global TYPE * restrict sum,
+    local TYPE * restrict wg_sum,
+    int array_size)
+  {
+    size_t i = get_global_id(0);
+    const size_t local_i = get_local_id(0);
+    wg_sum[local_i] = 0.0;
+    for (; i < array_size; i += get_global_size(0))
+      wg_sum[local_i] += a[i] * b[i];
+
+    for (int offset = get_local_size(0) / 2; offset > 0; offset /= 2)
+    {
+      barrier(CLK_LOCAL_MEM_FENCE);
+      if (local_i < offset)
+      {
+        wg_sum[local_i] += wg_sum[local_i+offset];
+      }
+    }
+
+    if (local_i == 0)
+      sum[get_group_id(0)] = wg_sum[local_i];
+  }
+
+)CLC"};
 
 template <class T>
 OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 {
+#ifdef METACL
   cl::Platform platformlist;
   cl_int errNum;
 
@@ -31,6 +112,15 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
   errNum=clRetainCommandQueue(queue());
   errNum=clRetainContext(context());
   errNum=clRetainDevice(device());
+#else
+  if (!cached)
+    getDeviceList();
+
+  // Setup default OpenCL GPU
+  if (device_index >= devices.size())
+    throw std::runtime_error("Invalid device index");
+  device = devices[device_index];
+#endif
   std::string platName = cl::Platform(device.getInfo<CL_DEVICE_PLATFORM>()).getInfo<CL_PLATFORM_NAME>();
 
   // Determine sensible dot kernel NDRange configuration
@@ -52,12 +142,42 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
   // Print out device information
   std::string name, driver;
+#ifdef METACL
   device.getInfo(CL_DEVICE_NAME, &name);
   device.getInfo(CL_DRIVER_VERSION, &driver);
+#else
+  name = getDeviceName(device_index);
+  driver = getDeviceDriver(device_index);
+#endif
   std::cout << "Using OpenCL device " << name << std::endl;
   std::cout << "Driver: " << driver << std::endl;
   std::cout << "Reduction kernel config: " << dot_num_groups << " groups of size " << dot_wgsize << std::endl;
 
+#ifndef METACL
+  context = cl::Context(device);
+  queue = cl::CommandQueue(context);
+
+  // Create program
+  cl::Program program;
+  if (device.getInfo<CL_DEVICE_TYPE>() & CL_DEVICE_TYPE_ACCELERATOR && (platName.find("Intel(R) FPGA")!=std::string::npos || platName.find("Altera")!=std::string::npos)) {
+    #define clBinaryProg(name) \
+    cl_program name; { \
+       printf("Loading "#name".aocx\n"); \
+FILE * f = fopen(#name".aocx", "r"); \
+       fseek(f, 0, SEEK_END); \
+       size_t len = (size_t) ftell(f); \
+       const unsigned char * progSrc = (const unsigned char *) malloc(sizeof(char) * len); \
+       rewind(f); \
+       fread((void *) progSrc, len, 1, f); \
+       fclose(f); \
+       cl_int err2; \
+       name = clCreateProgramWithBinary(context(), 1, &device(), &len, &progSrc, NULL, &err2);}
+    clBinaryProg(babelstream);
+    program = cl::Program(babelstream);
+  } else {
+    program = cl::Program(context, kernels);
+  }
+#endif
   std::ostringstream args;
   args << "-DstartScalar=" << startScalar << " ";
   if (sizeof(T) == sizeof(double))
@@ -66,14 +186,41 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
     // Check device can do double
     if (!device.getInfo<CL_DEVICE_DOUBLE_FP_CONFIG>())
       throw std::runtime_error("Device does not support double precision, please use --float");
+#ifndef METACL
+    try
+    {
+      program.build(args.str().c_str());
+    }
+    catch (cl::Error& err)
+    {
+      if (err.err() == CL_BUILD_PROGRAM_FAILURE)
+      {
+        std::cout << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>()[0].second << std::endl;
+        throw err;
+      }
+    }
+#endif
   }
   else if (sizeof(T) == sizeof(float))
   {
     args << "-DTYPE=float";
+#ifndef METACL
+    program.build(args.str().c_str());
+#endif
   }
   std::string c_args = args.str();
   __metacl_babelstream_custom_args= c_args.c_str();
   meta_register_module(&metacl_metacl_module_registry);
+
+#ifndef METACL
+  // Create kernels
+  init_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, T, T, T>(program, "init");
+  copy_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "copy");
+  mul_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer>(program, "mul");
+  add_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "add");
+  triad_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer>(program, "triad");
+  dot_kernel = new cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl::LocalSpaceArg, cl_int>(program, "stream_dot");
+#endif
 
   array_size = ARRAY_SIZE;
 
@@ -97,41 +244,92 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 template <class T>
 OCLStream<T>::~OCLStream()
 {
+#ifdef METACL
   meta_deregister_module(&metacl_metacl_module_registry);
+#else
+  delete init_kernel;
+  delete copy_kernel;
+  delete mul_kernel;
+  delete add_kernel;
+  delete triad_kernel;
+
+  devices.clear();
+#endif
 }
 
 template <class T>
 void OCLStream<T>::copy()
 {
+#ifdef METACL
   metacl_babelstream_copy(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_c());
+#else
+  (*copy_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_c
+  );
+  queue.finish();
+#endif
 }
 
 template <class T>
 void OCLStream<T>::mul()
 {
+#ifdef METACL
   metacl_babelstream_mul(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_b(), &d_c());
+#else
+  (*mul_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_b, d_c
+  );
+  queue.finish();
+#endif
 }
 
 template <class T>
 void OCLStream<T>::add()
 {
+#ifdef METACL
   metacl_babelstream_add(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
+#else
+  (*add_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_b, d_c
+  );
+  queue.finish();
+#endif
 }
 
 template <class T>
 void OCLStream<T>::triad()
 {
+#ifdef METACL
   metacl_babelstream_triad(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
+#else
+  (*triad_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_b, d_c
+  );
+  queue.finish();
+#endif
 }
 
 template <class T>
 T OCLStream<T>::dot()
 {
+#ifdef METACL
   a_dim3 global = {dot_num_groups*dot_wgsize,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
 
   metacl_babelstream_stream_dot(queue(), &global, &local, NULL, 0, NULL, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);
   cl::copy(queue, d_sum, sums.begin(), sums.end());
+#else
+  (*dot_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),
+    d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size
+  );
+  cl::copy(queue, d_sum, sums.begin(), sums.end());
+#endif
+
   T sum = 0.0;
   for (T val : sums)
     sum += val;
@@ -142,7 +340,15 @@ T OCLStream<T>::dot()
 template <class T>
 void OCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
+#ifdef METACL
   metacl_babelstream_init(queue(), &globalWorkSize , &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c(), initA, initB, initC);
+#else
+  (*init_kernel)(
+    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+    d_a, d_b, d_c, initA, initB, initC
+  );
+  queue.finish();
+#endif
 }
 
 template <class T>
@@ -152,6 +358,87 @@ void OCLStream<T>::read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector
   cl::copy(queue, d_b, b.begin(), b.end());
   cl::copy(queue, d_c, c.begin(), c.end());
 }
+
+#ifndef METACL
+void getDeviceList(void)
+{
+  // Get list of platforms
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
+
+  // Enumerate devices
+  for (unsigned i = 0; i < platforms.size(); i++)
+  {
+    std::vector<cl::Device> plat_devices;
+    platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &plat_devices);
+    devices.insert(devices.end(), plat_devices.begin(), plat_devices.end());
+  }
+  cached = true;
+}
+
+void listDevices(void)
+{
+  getDeviceList();
+
+  // Print device names
+  if (devices.size() == 0)
+  {
+    std::cerr << "No devices found." << std::endl;
+  }
+  else
+  {
+    std::cout << std::endl;
+    std::cout << "Devices:" << std::endl;
+    for (int i = 0; i < devices.size(); i++)
+    {
+      std::cout << i << ": " << getDeviceName(i) << std::endl;
+    }
+    std::cout << std::endl;
+  }
+
+
+}
+
+std::string getDeviceName(const int device)
+{
+  if (!cached)
+    getDeviceList();
+
+  std::string name;
+  cl_device_info info = CL_DEVICE_NAME;
+
+  if (device < devices.size())
+  {
+    devices[device].getInfo(info, &name);
+  }
+  else
+  {
+    throw std::runtime_error("Error asking for name for non-existant device");
+  }
+
+  return name;
+
+}
+
+std::string getDeviceDriver(const int device)
+{
+  if (!cached)
+    getDeviceList();
+
+  std::string driver;
+
+  if (device < devices.size())
+  {
+    devices[device].getInfo(CL_DRIVER_VERSION, &driver);
+  }
+  else
+  {
+    throw std::runtime_error("Error asking for driver for non-existant device");
+  }
+
+  return driver;
+}
+#endif
 
 template class OCLStream<float>;
 template class OCLStream<double>;

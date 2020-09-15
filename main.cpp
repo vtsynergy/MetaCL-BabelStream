@@ -503,6 +503,9 @@ void parseArguments(int argc, char *argv[])
   {
     if (!std::string("--list").compare(argv[i]))
     {
+#ifndef METACL
+      listDevices();
+#endif
       exit(EXIT_SUCCESS);
     }
     else if (!std::string("--device").compare(argv[i]))
