@@ -185,11 +185,9 @@ void run()
   std::chrono::high_resolution_clock::time_point t1, t2;
 
   // Main loop
-  printf("\n");
   for (unsigned int k = 0; k < num_times; k++)
   {
     // Execute Copy
-   // printf("iteration %d done\n",k);
     t1 = std::chrono::high_resolution_clock::now();
     stream->copy();
     t2 = std::chrono::high_resolution_clock::now();
@@ -505,7 +503,6 @@ void parseArguments(int argc, char *argv[])
   {
     if (!std::string("--list").compare(argv[i]))
     {
-      //listDevices();
       exit(EXIT_SUCCESS);
     }
     else if (!std::string("--device").compare(argv[i]))
