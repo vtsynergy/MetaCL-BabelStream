@@ -30,6 +30,9 @@ class Stream
     virtual void add() = 0;
     virtual void triad() = 0;
     virtual T dot() = 0;
+#ifdef KERNEL_PROFILE
+    virtual void print_res() = 0;
+#endif
 
     // Copy memory between host and device
     virtual void init_arrays(T initA, T initB, T initC) = 0;

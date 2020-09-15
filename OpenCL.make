@@ -66,6 +66,9 @@ else
 endif
 
 SRC = main.cpp OCLStream.cpp
+ifdef KERNEL_PROFILE
+EXTRA_FLAGS := $(EXTRA_FLAGS) -DKERNEL_PROFILE
+endif
 ifdef METACL
 SRC := $(SRC) metacl_module.c
 EXTRA_FLAGS := $(EXTRA_FLAGS) -DMETACL

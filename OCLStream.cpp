@@ -16,9 +16,16 @@ a_dim3 localwg = {0, 0, 0};
 #else
 std::vector<cl::Device> devices;
 #endif
+
 // Cache list of devices
 bool cached = false;
 void getDeviceList(void);
+cl::Event exec_event;
+#ifdef KERNEL_PROFILE
+#define BILLION 1E9
+cl_ulong start_time,end_time;size_t return_bytes;
+struct timespec start, end;
+#endif
 
 std::string kernels{R"CLC(
 
@@ -99,7 +106,7 @@ std::string kernels{R"CLC(
 )CLC"};
 
 template <class T>
-OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
+OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index):ker_launch_over(6, 0.0), ker_exec_time(6, 0.0), ker_exec_time_rec(6), ker_launch_over_rec(6)
 {
 #ifdef METACL
   cl::Platform platformlist;
@@ -155,7 +162,11 @@ OCLStream<T>::OCLStream(const unsigned int ARRAY_SIZE, const int device_index)
 
 #ifndef METACL
   context = cl::Context(device);
+#ifdef KERNEL_PROFILE
+  queue = cl::CommandQueue(context,CL_QUEUE_PROFILING_ENABLE);
+#else
   queue = cl::CommandQueue(context);
+#endif //KERNEL_PROFILE
 
   // Create program
   cl::Program program;
@@ -177,7 +188,7 @@ FILE * f = fopen(#name".aocx", "r"); \
   } else {
     program = cl::Program(context, kernels);
   }
-#endif
+#endif //METACL
   std::ostringstream args;
   args << "-DstartScalar=" << startScalar << " ";
   if (sizeof(T) == sizeof(double))
@@ -242,8 +253,32 @@ FILE * f = fopen(#name".aocx", "r"); \
 }
 
 template <class T>
+void OCLStream<T>::print_res()
+{
+  it_monitor++;
+
+  for (int i=0;i<=4;i++)
+  {
+    ker_launch_over_rec[i].push_back(ker_launch_over[i]);
+    ker_exec_time_rec[i].push_back(ker_exec_time[i]);
+  }
+}
+template <class T>
 OCLStream<T>::~OCLStream()
 {
+#ifdef KERNEL_PROFILE
+  printf("Kernel_Init_array_NDRange : %lf\nKernel_Init_array_Event_Based Time: %lf\nKernel_Init_array_Launch_Overhead: %lf\n",ker_launch_over_rec[5][0],ker_exec_time_rec[5][0],ker_launch_over_rec[5][0] - ker_exec_time_rec[5][0]);
+  for(int i=0; i<it_monitor;i++)
+  {
+    printf("****iteration %d *******\n",i+1);
+    printf("Kernel_Copy_NDRange : %lf\nKernel_Copy_Event_Based : %lf\nKernel_Copy_Launch_Overhead:  %lf\n",ker_launch_over_rec[0][i],ker_exec_time_rec[0][i],ker_launch_over_rec[0][i] - ker_exec_time_rec[0][i]);
+    printf("Kernel_Mul_NDRange : %lf\nKernel_Mul_Event_Based : %lf\nKernel_Mul_Launch_Overhead: %lf\n",ker_launch_over_rec[1][i],ker_exec_time_rec[1][i],ker_launch_over_rec[1][i] - ker_exec_time_rec[1][i]);
+    printf("Kernel_Add_NDRange : %lf\nKernel_Add_Event_Based : %lf\nKernel_Add_Launch_Overhead: %lf\n",ker_launch_over_rec[2][i],ker_exec_time_rec[2][i],ker_launch_over_rec[2][i] - ker_exec_time_rec[2][i]);
+    printf("Kernel_Triad_NDRange : %lf\nKernel_Triad_Event_Based : %lf\nKernel_Triad_Launch_Overhead: %lf\n",ker_launch_over_rec[3][i],ker_exec_time_rec[3][i],ker_launch_over_rec[3][i] - ker_exec_time_rec[3][i]);
+    printf("Kernel_Dot_NDRange : %lf\nKernel_Dot_Event_Based : %lf\nKernel_Dot_Launch_Overhead: %lf\n",ker_launch_over_rec[4][i],ker_exec_time_rec[4][i],ker_launch_over_rec[4][i] - ker_exec_time_rec[4][i]);
+    printf("************************\n\n");
+  }
+#endif
 #ifdef METACL
   meta_deregister_module(&metacl_metacl_module_registry);
 #else
@@ -260,75 +295,130 @@ OCLStream<T>::~OCLStream()
 template <class T>
 void OCLStream<T>::copy()
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   metacl_babelstream_copy(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_c());
 #else
-  (*copy_kernel)(
+  exec_event=(*copy_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_c
   );
-  queue.finish();
-#endif
+  exec_event.wait();
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &end);
+  ker_launch_over[0]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[0]=static_cast<double>(end_time-start_time)/BILLION;
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::mul()
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   metacl_babelstream_mul(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_b(), &d_c());
 #else
-  (*mul_kernel)(
+  exec_event=(*mul_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_b, d_c
   );
-  queue.finish();
-#endif
+  exec_event.wait();
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &end);
+  ker_launch_over[1]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[1]=static_cast<double>(end_time-start_time)/BILLION;
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::add()
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   metacl_babelstream_add(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
 #else
-  (*add_kernel)(
+  exec_event=(*add_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c
   );
-  queue.finish();
-#endif
+  exec_event.wait();
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &end);
+ ker_launch_over[2]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[2]=static_cast<double>(end_time-start_time)/BILLION;
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
 }
 
 template <class T>
 void OCLStream<T>::triad()
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   metacl_babelstream_triad(queue(), &globalWorkSize, &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c());
 #else
-  (*triad_kernel)(
-    cl::EnqueueArgs(queue, cl::NDRange(array_size)),
+  exec_event=(*triad_kernel)(
+    cl::EnqueueArgs(queue,cl::NDRange(array_size)),
     d_a, d_b, d_c
   );
-  queue.finish();
-#endif
+  exec_event.wait();
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &end);
+  ker_launch_over[3]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[3]=static_cast<double>(end_time-start_time)/BILLION;
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
 }
 
 template <class T>
 T OCLStream<T>::dot()
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   a_dim3 global = {dot_num_groups*dot_wgsize,1,1};
   a_dim3 local  = {dot_wgsize,1,1};
 
   metacl_babelstream_stream_dot(queue(), &global, &local, NULL, 0, NULL, &d_a(), &d_b(), &d_sum(), (size_t) dot_wgsize, array_size);
-  cl::copy(queue, d_sum, sums.begin(), sums.end());
 #else
-  (*dot_kernel)(
+  exec_event=(*dot_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(dot_num_groups*dot_wgsize), cl::NDRange(dot_wgsize)),
     d_a, d_b, d_sum, cl::Local(sizeof(T) * dot_wgsize), array_size
   );
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  exec_event.wait();
+  clock_gettime(CLOCK_REALTIME, &end);
+  ker_launch_over[4]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[4]=static_cast<double>(end_time-start_time)/BILLION;
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
   cl::copy(queue, d_sum, sums.begin(), sums.end());
-#endif
 
   T sum = 0.0;
   for (T val : sums)
@@ -340,15 +430,28 @@ T OCLStream<T>::dot()
 template <class T>
 void OCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &start);
+#endif //KERNEL_PROFILE
 #ifdef METACL
   metacl_babelstream_init(queue(), &globalWorkSize , &localwg, NULL, 0, NULL, &d_a(), &d_b(), &d_c(), initA, initB, initC);
 #else
-  (*init_kernel)(
+  exec_event=(*init_kernel)(
     cl::EnqueueArgs(queue, cl::NDRange(array_size)),
     d_a, d_b, d_c, initA, initB, initC
   );
-  queue.finish();
-#endif
+  exec_event.wait();
+#endif //METACL
+#ifdef KERNEL_PROFILE
+  clock_gettime(CLOCK_REALTIME, &end);
+  ker_launch_over[5]=( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION;
+  ker_launch_over_rec[5].push_back(( end.tv_sec - start.tv_sec ) + ( end.tv_nsec - start.tv_nsec )/ BILLION);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start_time);
+  exec_event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end_time);
+  ker_exec_time[5]=static_cast<double>(end_time-start_time)/BILLION;
+  ker_exec_time_rec[5].push_back(ker_exec_time[5]);
+#endif //KERNEL_PROFILE
+  exec_event=NULL;
 }
 
 template <class T>
